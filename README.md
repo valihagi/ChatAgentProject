@@ -5,7 +5,7 @@ Chat agent that turns natural-language product/packaging info into print-ready b
 ## Stack
 - Backend: ASP.NET Core (.NET 10) minimal API, `src/ChatAgent.Api`
 - Frontend: plain HTML/CSS/JS in `src/ChatAgent.Api/wwwroot` (served by the API, no build step)
-- LLM: Google Gemini (free tier), behind the `IChatModel` interface; a mock is the default
+- LLM: Google Gemini `gemini-3.8-flash` (free tier), behind the `IChatModel` interface; a mock is the default
 
 ## Run
 ```bash
@@ -18,7 +18,7 @@ Secrets come from environment variables only and are never committed.
 | Variable / setting | Purpose |
 |---|---|
 | `Chat__Provider` | `Mock` (default) or `Gemini` |
-| `GEMINI_API_KEY` | Gemini API key (only with `Gemini`) |
+| `GEMINI_API_KEY` | Gemini API key (only with `Gemini`); store with `dotnet user-secrets` |
 | `Gemini__Model` | Optional model override |
 | `TECIT_ACCESS_ID` | TEC-IT Barcode API access id |
 

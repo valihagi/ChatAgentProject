@@ -5,7 +5,7 @@ namespace ChatAgent.Api.Chat;
 
 public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatModel
 {
-    private readonly string _model = config["Gemini:Model"] ?? "gemini-2.5-flash";
+    private readonly string _model = config["Gemini:Model"] ?? "gemini-3.8-flash";
     private readonly string _apiKey = config["GEMINI_API_KEY"]
         ?? throw new InvalidOperationException("GEMINI_API_KEY is not set.");
 

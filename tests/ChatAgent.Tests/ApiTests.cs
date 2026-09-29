@@ -23,6 +23,7 @@ public class ApiTests
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Testing");
+            b.UseSetting("TECIT_ACCESS_ID", "test-id"); // startup requires it; the client itself is replaced below
             if (chatPerMinute is { } n) b.UseSetting("RateLimit:ChatPerMinute", n.ToString());
             b.ConfigureTestServices(s => s.AddSingleton<IBarcodeClient>(new StubBarcodes(barcodeFailure)));
         }).CreateClient();

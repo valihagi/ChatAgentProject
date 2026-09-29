@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = ChatRequestLimits.MaxBodyBytes);
 
 builder.Services.AddChatModel(builder.Configuration); // Mock unless Chat:Provider=Gemini
-builder.Services.AddHttpClient<IBarcodeClient, BarcodeClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddBarcodeClient(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<LabelAgent>();
 

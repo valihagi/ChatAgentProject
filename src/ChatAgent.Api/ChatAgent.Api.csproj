@@ -7,4 +7,8 @@
     <UserSecretsId>017d588e-94fb-4db9-b65d-786ef69e4508</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Content Include="Prompts\*.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

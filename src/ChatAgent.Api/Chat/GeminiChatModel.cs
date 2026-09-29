@@ -9,10 +9,14 @@ public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatMode
     private readonly string _apiKey = config["GEMINI_API_KEY"]
         ?? throw new InvalidOperationException("GEMINI_API_KEY is not set.");
 
+    private readonly string _systemPrompt = File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "Prompts", "system-prompt.md"));
+
     public async Task<string> CompleteAsync(IReadOnlyList<ChatMessage> history, CancellationToken ct)
     {
         var body = new
         {
+            systemInstruction = new { parts = new[] { new { text = _systemPrompt } } },
             contents = history.Select(m => new
             {
                 role = m.Role == "user" ? "user" : "model",

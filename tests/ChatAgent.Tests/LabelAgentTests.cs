@@ -2,6 +2,8 @@ using System.Text.Json;
 using ChatAgent.Api.Agent;
 using ChatAgent.Api.Barcode;
 using ChatAgent.Api.Chat;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace ChatAgent.Tests;
@@ -38,8 +40,18 @@ public class LabelAgentTests
         ProductName = "Apfelsaft", PackagingLevel = "consumer_unit", Symbology = "EAN13", Gtin = "4006381333931",
     };
 
-    private static LabelAgent Agent(IChatModel model, IBarcodeClient barcodes) =>
-        new(model, barcodes, new FakeTimeProvider(new DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero)));
+    private static LabelAgent Agent(IChatModel model, IBarcodeClient barcodes, ILogger<LabelAgent>? log = null) =>
+        new(model, barcodes, new FakeTimeProvider(new DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero)),
+            log ?? NullLogger<LabelAgent>.Instance);
+
+    private class ListLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? ex, Func<TState, Exception?, string> format) =>
+            Entries.Add((level, format(state, ex)));
+    }
 
     private static ChatRequest Say(string text, LabelSpec? label = null) => new([new("user", text)], label);
 
@@ -127,7 +139,31 @@ public class LabelAgentTests
 
         Assert.Equal(300, response.Dpi);
         Assert.Equal("4006381333931", response.Label.Gtin);
-        Assert.EndsWith("GTIN completed with check digit: 4006381333931", response.Reply);
+        Assert.Equal("Done", response.Reply);                      // the reply text stays untouched (language of the model)
+        Assert.Equal([Notice.GtinCompleted], response.Notices);    // the frontend translates the notice
+    }
+
+    [Fact]
+    public async Task No_notice_when_the_gtin_was_complete()
+    {
+        var model = new ScriptedModel(new AgentReply { Message = "Done", Status = "ready", Label = GoodLabel });
+
+        var response = await Agent(model, new FakeBarcodes()).HandleAsync(Say("go"), default);
+
+        Assert.Empty(response.Notices!);
+    }
+
+    [Fact]
+    public async Task Validation_override_is_logged_with_field_names_but_never_with_user_values()
+    {
+        var wrong = GoodLabel with { Gtin = "4006381333932", ProductName = "Secret Recipe Juice" };
+        var log = new ListLogger<LabelAgent>();
+        var model = new ScriptedModel(new AgentReply { Message = "Done", Status = "ready", Label = wrong });
+
+        await Agent(model, new FakeBarcodes(), log).HandleAsync(Say("my private input"), default);
+
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("gtin:invalid"));
+        Assert.DoesNotContain(log.Entries, e => e.Message.Contains("4006381333932") || e.Message.Contains("Secret Recipe") || e.Message.Contains("private input"));
     }
 
     [Fact]

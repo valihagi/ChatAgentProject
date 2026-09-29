@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using ChatAgent.Api.Chat;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace ChatAgent.Tests;
@@ -18,7 +19,7 @@ public class GeminiChatModelTests
                 """{"candidates":[{"content":{"parts":[{"text":"hi"}]}}]}""", Encoding.UTF8, "application/json"),
         });
         var config = new ConfigurationBuilder().AddInMemoryCollection([new("GEMINI_API_KEY", "k")]).Build();
-        var model = new GeminiChatModel(new HttpClient(handler), config, Clock);
+        var model = new GeminiChatModel(new HttpClient(handler), config, Clock, NullLogger<GeminiChatModel>.Instance);
 
         var reply = await model.CompleteAsync(
             [new("user", "Hallo"), new("agent", "Grüß dich"), new("user", "Apfelsaft")], default);
@@ -70,7 +71,8 @@ public class GeminiChatModelTests
     private static GeminiChatModel Model(FakeHandler handler) => new(
         new HttpClient(handler),
         new ConfigurationBuilder().AddInMemoryCollection([new("GEMINI_API_KEY", "k")]).Build(),
-        Clock)
+        Clock,
+        NullLogger<GeminiChatModel>.Instance)
     { RetryDelay = TimeSpan.Zero };
 
     private static readonly FakeTimeProvider Clock = new(new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero));

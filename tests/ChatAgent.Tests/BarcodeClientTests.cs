@@ -1,6 +1,7 @@
 using System.Net;
 using ChatAgent.Api.Barcode;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ChatAgent.Tests;
 
@@ -10,7 +11,8 @@ public class BarcodeClientTests
 
     private static BarcodeClient Client(FakeHandler handler) => new(
         new HttpClient(handler),
-        new ConfigurationBuilder().AddInMemoryCollection([new("TECIT_ACCESS_ID", AccessId)]).Build());
+        new ConfigurationBuilder().AddInMemoryCollection([new("TECIT_ACCESS_ID", AccessId)]).Build(),
+        NullLogger<BarcodeClient>.Instance);
 
     private static readonly BarcodeRequest Ean = new("EAN13", "4006381333931");
 

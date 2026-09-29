@@ -222,4 +222,113 @@ public class LabelValidatorTests
 
         AssertIssue(Check(Bottle(s => s with { WidthMm = 40 })), "heightMm", "missing");
     }
+
+    // ---- EAN-8, UPC-A ----
+
+    [Theory]
+    [InlineData("EAN8", "96385074")]
+    [InlineData("UPCA", "036000291452")]
+    public void Complete_ean8_and_upca_pass_through(string symbology, string gtin)
+    {
+        var r = Check(Bottle(s => s with { Symbology = symbology, Gtin = gtin }));
+
+        Assert.True(r.Ok);
+        Assert.Equal(gtin, r.Request!.Data);
+    }
+
+    [Theory]
+    [InlineData("EAN8", "96385075", "check digit")]     // wrong check digit
+    [InlineData("EAN8", "123", "needs 7 or 8 digits")]
+    [InlineData("UPCA", "036000291453", "check digit")]
+    [InlineData("UPCA", "4006381333931", "needs 11 or 12 digits")] // an EAN-13 given as UPC-A
+    public void Ean8_and_upca_reject_bad_gtins(string symbology, string gtin, string detailPart)
+    {
+        var r = Check(Bottle(s => s with { Symbology = symbology, Gtin = gtin }));
+
+        AssertIssue(r, "gtin", "invalid");
+        Assert.Contains(detailPart, r.Issues.Single().Detail);
+    }
+
+    // ---- Code 128 / Code 39 ----
+
+    [Theory]
+    [InlineData("Code128")]
+    [InlineData("Code39")]
+    public void Code128_and_code39_encode_the_plain_gtin(string symbology)
+    {
+        var r = Check(Bottle(s => s with { Symbology = symbology }));
+
+        Assert.True(r.Ok);
+        Assert.Equal(Gtin13, r.Request!.Data);
+        Assert.Equal(0.25, r.Request.ModuleWidth);
+    }
+
+    [Theory]
+    [InlineData("Code128")]
+    [InlineData("Code39")]
+    public void Code128_and_code39_need_digits_and_cannot_carry_batch(string symbology)
+    {
+        AssertIssue(Check(Bottle(s => s with { Symbology = symbology, Gtin = "40063A" })), "gtin", "invalid");
+        AssertIssue(Check(Bottle(s => s with { Symbology = symbology, Gtin = null })), "gtin", "missing");
+        AssertIssue(Check(Bottle(s => s with { Symbology = symbology, Batch = "L1" })), "symbology", "conflict");
+    }
+
+    // ---- plain QR / DataMatrix ----
+
+    [Theory]
+    [InlineData("QRCode")]
+    [InlineData("DataMatrix")]
+    public void Plain_2d_codes_encode_the_url_and_reject_gs1_attributes(string symbology)
+    {
+        var withUrl = Bottle(s => s with { Symbology = symbology, Url = "https://example.com/p/1" });
+
+        var ok = Check(withUrl);
+        Assert.True(ok.Ok);
+        Assert.Equal(("https://example.com/p/1", 0.5), (ok.Request!.Data, ok.Request.ModuleWidth));
+        AssertIssue(Check(withUrl with { Batch = "L1" }), "symbology", "conflict");
+    }
+
+    // ---- GS1 2D element strings and pallets ----
+
+    [Theory]
+    [InlineData("GS1DataMatrix")]
+    [InlineData("GS1QRCode")]
+    public void Gs1_2d_codes_use_the_same_element_string_as_gs1_128(string symbology)
+    {
+        var r = Check(Bottle(s => s with { Symbology = symbology, Batch = "L1" }));
+
+        Assert.Equal($"(01)0{Gtin13}(10)L1", r.Request!.Data);
+        Assert.Equal(0.5, r.Request.ModuleWidth);
+    }
+
+    [Fact]
+    public void Pallet_can_add_gtin_and_batch_to_the_sscc()
+    {
+        var r = Check(new LabelSpec
+        {
+            ProductName = "P", PackagingLevel = "pallet", Symbology = "GS1DataMatrix", Sscc = Sscc(), Gtin = Gtin14, Batch = "L1",
+        });
+
+        Assert.Equal($"(00){Sscc()}(01){Gtin14}(10)L1", r.Request!.Data);
+    }
+
+    [Fact]
+    public void Sscc_needs_18_digits()
+    {
+        var r = Check(new LabelSpec
+        {
+            ProductName = "P", PackagingLevel = "pallet", Symbology = "GS1-128", Sscc = "12345",
+        });
+
+        AssertIssue(r, "sscc", "invalid");
+    }
+
+    [Fact]
+    public void Item_count_conflicts_with_digital_link_and_sscc_with_non_pallets()
+    {
+        var caseLabel = Bottle(s => s with { PackagingLevel = "case", Symbology = "GS1DigitalLink_QRCode", Gtin = Gtin14, ItemCount = 12 });
+
+        AssertIssue(Check(caseLabel), "itemCount", "conflict");
+        AssertIssue(Check(Bottle(s => s with { Sscc = Sscc() })), "sscc", "conflict");
+    }
 }

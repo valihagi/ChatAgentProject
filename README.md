@@ -137,8 +137,9 @@ Standard ASP.NET Core console logging. The app logs turn outcomes (status, issue
 ## Gemini notes (observed)
 - The free tier allows only about **20 requests per model per day** (`generate_content_free_tier_requests`), and each model has its own quota. A chat turn costs 1 request (2 if validation feedback is needed); retried 503s probably count too. A 429 is not retried.
 - Free-tier models are intermittently overloaded (503). The client retries a 503 once. `gemini-3.7/3.8-flash` were overloaded for long stretches; `gemini-3.5-flash` was reliable and is the default.
-- Verified against the real API: vague German input leads to a follow-up question; contradictory pallet/EAN-13/past-date input leads to all conflicts being named; a complete case label renders GS1-128; a wrong check digit is caught; a follow-up edit to a Digital Link QR code keeps earlier fields; the response schema is accepted; a 12-digit GTIN is completed.
-- Not yet verified live (quota exhausted): relative dates ("Ende nächsten Monats") and the past-date confirmation flow.
+- Verified against the real API (`gemini-3.5-flash`, `gemini-3.7-flash` and `gemini-3.5-flash-lite`): vague German input leads to a follow-up question; contradictory pallet/EAN-13/past-date input leads to all conflicts being named; a complete case label renders GS1-128; a wrong check digit is caught; a follow-up edit to a Digital Link QR code keeps earlier fields; a 12-digit GTIN is completed; a relative date ("Ende nächsten Monats") is resolved from the date the backend injects; the past-date flow works end to end (question, user confirmation, `allowPastDate`, label rendered).
+- Lesson: with a `responseSchema`, keys that are not `required` are silently omitted by the model (a first turn returned only the product name although GTIN, date and count had been given). All label keys are therefore required (nullable) and carry short descriptions.
+- Not verified live: the `cleared` list (unit-tested only) and the sentence added afterwards to stop the model from asking for confirmation of unambiguous relative dates. `gemini-3.6-flash` and `gemini-3.8-flash` answered 503 (overloaded) whenever tried.
 
 ## Known limitations
 - Output is a 300 DPI PNG (limit of the access id, no SVG/vector), so very large print sizes are not crisp.

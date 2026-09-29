@@ -1,0 +1,25 @@
+# Live chats with gemini-3.5-flash-lite (real Gemini + real TEC-IT Barcode API), 2026-09-29
+
+
+=== S1 wine: volume + ABV extraction
+USER : Riesling Qualitätswein 0,75 l, 12,5 % vol, Flasche, GTIN 4006381333931
+AGENT: [ready] Der Riesling Qualitätswein (0,75 l, 12,5 % vol, Flasche) mit der GTIN 4006381333931 ist vollständig erfasst. Das Etikett wird als EAN13 erstellt.
+LABEL: {"productName": "Riesling Qualitätswein", "netVolume": "0,75 l", "alcoholic": true, "alcoholPercent": 12.5, "packagingLevel": "consumer_unit", "symbology": "EAN13", "gtin": "4006381333931"}
+
+=== S2 juice with alcohol: contradiction
+USER : Apfelsaft naturtrüb 1 l Flasche mit 12 % vol, GTIN 4006381333931
+AGENT: [needs_info] Ein Apfelsaft naturtrüb kann kein alkoholisches Getränk mit 12 % vol sein. Bitte korrigieren Sie entweder die Produktbeschreibung, entfernen Sie den Alkoholgehalt oder setzen Sie den Alkoholgehalt auf null (alkoholfrei).
+LABEL: {"productName": "Apfelsaft naturtrüb", "netVolume": "1 l", "alcoholic": true, "alcoholPercent": 12, "packagingLevel": "consumer_unit", "symbology": "EAN13", "gtin": "4006381333931"}
+
+=== S3 case label: relative date + too small size
+USER : Karton mit 12 Flaschen Apfelsaft 0,75 l, GTIN 14006381333938, GS1-128, Charge LOT42, MHD Ende nächsten Monats, Etikettengröße 60 mm x 30 mm
+AGENT: [needs_info] Die Etikettenbreite von 60 mm ist zu klein für den GS1-128-Barcode mit den aktuellen Daten. Es werden mindestens 114 mm benötigt. Möchten Sie die Etikettengröße anpassen?
+LABEL: {"productName": "Apfelsaft", "netVolume": "0,75 l", "alcoholic": false, "packagingLevel": "case", "symbology": "GS1-128", "gtin": "14006381333938", "batch": "LOT42", "bestBefore": "2026-10-31", "itemCount": 12, "widthMm": 60, "heightMm": 30}
+
+=== S4 withdraw a value (cleared)
+USER : Cola Dose 0,33 l, GS1-128, GTIN 5449000000996, Charge L1
+AGENT: [needs_info] Für den GS1-128 Barcode wird neben der Charge und GTIN auch ein Mindesthaltbarkeitsdatum (MHD) benötigt. Welches Datum soll verwendet werden?
+LABEL: {"productName": "Cola Dose", "netVolume": "0,33 l", "alcoholic": false, "packagingLevel": "consumer_unit", "symbology": "GS1-128", "gtin": "5449000000996", "batch": "L1"}
+USER : Doch keine Charge, bitte ohne
+AGENT: [needs_info] Die Charge wurde entfernt. Für eine Cola-Dose als Handelseinheit ist der Standard-Barcode EAN13 bestens geeignet. Soll ich EAN13 verwenden und damit das Etikett erstellen?
+LABEL: {"productName": "Cola Dose", "netVolume": "0,33 l", "alcoholic": false, "packagingLevel": "consumer_unit", "symbology": "GS1-128", "gtin": "5449000000996"}

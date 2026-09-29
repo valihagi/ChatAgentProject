@@ -1,0 +1,15 @@
+# Live chats with gemini-3.5-flash-lite, past-date and relative-date flows
+
+
+=== F2 past date then confirm
+USER : Cola Dose 0,33 l im Karton zu 24 Stück, GS1-128, GTIN 15449000000993, MHD 2020-03-31
+AGENT: [needs_info] Das MHD 31.03.2020 liegt in der Vergangenheit. Ist das beabsichtigt (z. B. Nachdruck), oder soll ein anderes Datum verwendet werden?
+LABEL: {"productName": "Cola Dose", "netVolume": "0,33 l", "packagingLevel": "case", "symbology": "GS1-128", "gtin": "15449000000993", "bestBefore": "2020-03-31", "itemCount": 24}
+USER : Ja, das ist ein Nachdruck für ein Archivmuster, das Datum ist so gewollt
+AGENT: [ready] Der Nachdruck mit dem MHD vom 31.03.2020 wurde bestätigt. Das Etikett ist nun vollständig und bereit.
+LABEL: {"productName": "Cola Dose", "netVolume": "0,33 l", "packagingLevel": "case", "symbology": "GS1-128", "gtin": "15449000000993", "bestBefore": "2020-03-31", "allowPastDate": true, "itemCount": 24}
+
+=== F1 relative date
+USER : Karton mit 12 Flaschen Apfelsaft 0,75 l, GTIN 14006381333938, GS1-128, Charge LOT42, MHD Ende nächsten Monats
+AGENT: [needs_info] Bitte geben Sie mir noch den genauen Tag für das Mindesthaltbarkeitsdatum an (Ende nächsten Monats wäre der 2026-10-31), oder bestätigen Sie dieses Datum.
+LABEL: {"productName": "Apfelsaft", "netVolume": "0,75 l", "packagingLevel": "case", "symbology": "GS1-128", "gtin": "14006381333938", "batch": "LOT42", "bestBefore": "2026-10-31", "itemCount": 12}

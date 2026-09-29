@@ -136,6 +136,7 @@ Standard ASP.NET Core console logging. The app logs turn outcomes (status, issue
 - Requests are sent as POST so the access id never appears in a URL.
 - Errors are returned as HTTP 200 with an `image/gif` error bitmap (`onerror=500` is not honoured), so the client treats any media type different from the requested one as a failure.
 - This access id behaves like a non-subscriber: max 300 DPI, no SVG, per-IP rate limit.
+- Size check: when the user requests a label size, the backend first renders the symbol at the smallest acceptable bar width, reads the real width from the PNG and reports a conflict if the requested area is smaller (an estimate from the symbol structure was off by up to 40 % against measurements).
 - Sizing: `unit=fit` with `width`/`height` in mm scales the whole symbol into the box; `unit=mm` *crops* it at the canvas edge, so it must not be used for fixed label sizes. A box that is too small for the data yields a scaled-down, possibly unscannable symbol (no warning from the API).
 - Default label size: the backend sets a module width in mm per symbology (EAN/UPC 0.33, GS1-128/EAN-14/Code 128 0.25, 2D 0.5) so sizes are deterministic. Without it the API picks its own scale (a long GS1-128 came out ~240 mm wide).
 - The API does not validate GS1 check digits (a wrong GTIN check digit in GS1-128 still renders), so the backend validates them.
@@ -145,7 +146,9 @@ Standard ASP.NET Core console logging. The app logs turn outcomes (status, issue
 - Free-tier models are intermittently overloaded (503). The client retries a 503 once. `gemini-3.7/3.8-flash` were overloaded for long stretches; `gemini-3.5-flash` was reliable and is the default.
 - Verified against the real API (`gemini-3.5-flash`, `gemini-3.7-flash` and `gemini-3.5-flash-lite`): vague German input leads to a follow-up question; contradictory pallet/EAN-13/past-date input leads to all conflicts being named; a complete case label renders GS1-128; a wrong check digit is caught; a follow-up edit to a Digital Link QR code keeps earlier fields; a 12-digit GTIN is completed; a relative date ("Ende nächsten Monats") is resolved from the date the backend injects; the past-date flow works end to end (question, user confirmation, `allowPastDate`, label rendered).
 - Lesson: with a `responseSchema`, keys that are not `required` are silently omitted by the model (a first turn returned only the product name although GTIN, date and count had been given). All label keys are therefore required (nullable) and carry short descriptions.
-- Not verified live: the `cleared` list (unit-tested only) and the sentence added afterwards to stop the model from asking for confirmation of unambiguous relative dates. `gemini-3.6-flash` and `gemini-3.8-flash` answered 503 (overloaded) whenever tried.
+- Verified live on `gemini-3.5-flash-lite` (2026-09-29, transcripts in `docs/samples/`): extraction of net volume and alcohol content (`alcoholic`, `alcoholPercent`); a 12 % vol apple juice is flagged as a contradiction; a relative date ("Ende nächsten Monats") is resolved and used without a needless confirmation question; the size warning fires with the API's measured width ("at least 114 mm" for a 60 mm request); withdrawing a value ("Doch keine Charge") removes only that value (`cleared`).
+- Observed weaknesses of the small model: it sometimes asks for data that is not required (a best-before date for a consumer unit in GS1-128) and it classified the 12 % apple juice as `alcoholic: true`, so the contradiction was caught by the model's own reasoning and not by the validator's rule (which needs `alcoholic: false`). The rules depend on the model's classification.
+- `gemini-3.6-flash` and `gemini-3.8-flash` answered 503 (overloaded) whenever tried.
 
 ## Open points (label content not covered yet)
 The task asks for "konforme" labels and provides no rule packs, so the scope was decided explicitly: **barcode correctness plus net volume and alcohol content**. Still open:
@@ -161,6 +164,6 @@ The task asks for "konforme" labels and provides no rule packs, so the scope was
 - "Print-ready" covers the barcode with its data, the product name, net volume and alcohol content (see the rules above). Further regulatory label content is **not modelled** (open points below).
 - One label per conversation state; several labels (bottle, case, pallet) need separate chats.
 - GS1 Digital Link codes point to GS1's generic resolver (`id.gs1.org`), which only resolves GTINs registered there.
-- Barcodes were not verified with a scanner; a symbol that is scaled into a very small box is not warned about.
+- Barcodes were not verified with a scanner. The size check compares the requested area with the width the API reports at the smallest bar width (approximated GS1 minimums); it costs one extra Barcode API call when a size is requested.
 - Server-side messages (errors, the validator's fallback text) are English; the interface and the check-digit notice are translated, and the model answers in the user's language.
 - The conversation is not persisted; reloading the page starts a new chat.

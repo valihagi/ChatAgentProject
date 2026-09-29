@@ -8,7 +8,7 @@ You describe a product in the chat (German or English; incomplete or contradicto
 
 ## Quick start
 ```bash
-git clone <repository-url> && cd ChatAgentProject
+git clone https://github.com/valihagi/ChatAgentProject.git && cd ChatAgentProject
 dotnet user-secrets set TECIT_ACCESS_ID "<id>"   --project src/ChatAgent.Api
 dotnet user-secrets set GEMINI_API_KEY  "<key>"  --project src/ChatAgent.Api
 dotnet run --project src/ChatAgent.Api            # http://localhost:5080 (add Chat__Provider=Mock to run offline)
@@ -44,7 +44,7 @@ docs/dokumentation.html  source of the PDF; docs/screenshots and docs/samples ho
 - Git
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/valihagi/ChatAgentProject.git
 cd ChatAgentProject
 ```
 

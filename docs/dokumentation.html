@@ -43,8 +43,8 @@ pre { font: 8.4pt/1.35 Menlo, Consolas, monospace; background: #f4f4f4; padding:
     <dt>Repository</dt><dd>https://github.com/valihagi/ChatAgentProject</dd>
     <dt>Stand</dt><dd>29.09.2026</dd>
     <dt>Technik</dt><dd>C# / ASP.NET Core (.NET 10), HTML/CSS/JavaScript, Google Gemini, TEC-IT Barcode API</dd>
-    <dt>Entwicklung</dt><dd>Claude Code (Modell Claude Sonnet 5.5), eine Sitzung; das Sitzungsprotokoll liegt bei</dd>
-    <dt>Aufgewendete Zeit</dt><dd>ca. 2 Std. 24 Min. (09:33 bis ca. 11:57 Uhr), siehe Kapitel 12</dd>
+    <dt>Entwicklung</dt><dd>Claude Code (Modell Claude Sonnet 5.5), eine Sitzung; bereinigtes Sitzungsprotokoll in <code>docs/session-log/</code></dd>
+    <dt>Aufgewendete Zeit</dt><dd>ca. 2 Std. 35 Min. (09:33 bis ca. 12:08 Uhr), siehe Kapitel 12</dd>
   </dl>
 </section>
 
@@ -281,9 +281,9 @@ pre { font: 8.4pt/1.35 Menlo, Consolas, monospace; background: #f4f4f4; padding:
 <table>
 <tr><th style="width:36%">Angabe</th><th>Wert</th></tr>
 <tr><td>Beginn</td><td>29.09.2026, 09:33 Uhr (Anlegen des Projektordners; erster Commit 09:49 Uhr)</td></tr>
-<tr><td>Stand bei Erstellung dieser Dokumentation</td><td>ca. 11:57 Uhr</td></tr>
-<tr><td>Dauer (Wanduhr)</td><td><b>ca. 2 Std. 24 Min.</b> Wanduhrzeit, einschließlich der Wartezeiten auf überlastete oder ausgeschöpfte Gemini-Modelle und der Analyse der API-Eigenheiten</td></tr>
-<tr><td>Nicht enthalten</td><td>der abschließende manuelle Test durch den Autor sowie Export und Bereinigung des Sitzungsprotokolls</td></tr>
+<tr><td>Stand bei Erstellung dieser Dokumentation</td><td>ca. 12:08 Uhr</td></tr>
+<tr><td>Dauer (Wanduhr)</td><td><b>ca. 2 Std. 35 Min.</b> Wanduhrzeit, einschließlich der Wartezeiten auf überlastete oder ausgeschöpfte Gemini-Modelle und der Analyse der API-Eigenheiten</td></tr>
+<tr><td>Nicht enthalten</td><td>der abschließende manuelle Test durch den Autor; das Sitzungsprotokoll wurde danach exportiert, bereinigt und im Repository abgelegt (<code>docs/session-log/</code>, PDF und vollständige Markdown-Fassung)</td></tr>
 </table>
 <p><b>Vorgehen.</b> Die Lösung entstand mit dem Coding-Agenten Claude Code (Modell Claude Sonnet 5.5) in einer Sitzung: Aufgaben und API-Referenz lesen, Grundgerüst (Backend, minimales Frontend, Git, .gitignore), Barcode-Client mit Erkundung der echten API, Agent und Validator, Etikettendarstellung, Härtung (Grenzen, Zeitlimits, Logging), Zweisprachigkeit, Größenprüfung, Live-Tests mit Gemini, Code-Review mit anschließender Fehlerbehebung, Dokumentation. Das Protokoll enthält die Fehlversuche (Kapitel 6). Der Verlauf ist in über 45 kleinen Commits nachvollziehbar; der System-Prompt liegt im Repository (<code>src/ChatAgent.Api/Prompts/system-prompt.md</code>).</p>
 <p><b>Einrichtung und Bedienung</b> sind im <code>README.md</code> beschrieben (Voraussetzungen, Zugangsdaten per Umgebungsvariable oder <i>user-secrets</i> für macOS, Linux und Windows, Start mit Gemini oder Mock, Tests, Fehlerbehebung, Konfigurationsreferenz).</p>

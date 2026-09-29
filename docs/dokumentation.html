@@ -1,0 +1,295 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Dokumentation Label Chat Agent</title><style>
+@page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+* { box-sizing: border-box; }
+body { font: 10.3pt/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1a1a1a; }
+h1 { font-size: 26pt; margin: 0 0 4mm; }
+h2 { font-size: 15pt; border-bottom: 2px solid #c8102e; padding-bottom: 1.5mm; margin: 9mm 0 3mm; break-after: avoid; }
+h3 { font-size: 11.5pt; margin: 5mm 0 1.5mm; break-after: avoid; }
+p { margin: 0 0 2.5mm; }
+ul, ol { margin: 0 0 3mm; padding-left: 5.5mm; } li { margin-bottom: 1mm; }
+code { font: 9pt Menlo, Consolas, monospace; background: #f1f1f1; padding: 0 1mm; border-radius: 1mm; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; font-size: 9.3pt; break-inside: auto; }
+th, td { border: 1px solid #ccc; padding: 1.4mm 2mm; vertical-align: top; text-align: left; }
+th { background: #f0f0f0; } tr { break-inside: avoid; }
+.cover { min-height: 235mm; display: flex; flex-direction: column; justify-content: center; break-after: page; }
+.cover .band { background: #111827; color: #fff; padding: 5mm 6mm; margin-bottom: 14mm; border-bottom: 3px solid #c8102e; font-size: 9pt; letter-spacing: .5px; }
+.cover .sub { font-size: 14pt; color: #444; margin-bottom: 12mm; }
+.cover dl { display: grid; grid-template-columns: 38mm 1fr; gap: 1.5mm 4mm; font-size: 10.5pt; } .cover dt { color: #666; } .cover dd { margin: 0; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0; }
+.kpi { border: 1px solid #ddd; border-top: 3px solid #c8102e; padding: 2.5mm; text-align: center; } .kpi b { display: block; font-size: 16pt; } .kpi span { font-size: 8.5pt; color: #555; }
+figure { margin: 3mm 0 5mm; break-inside: avoid; text-align: center; }
+figure img { max-width: 100%; border: 1px solid #ccc; }
+figcaption { font-size: 8.8pt; color: #555; margin-top: 1.5mm; text-align: left; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; break-inside: avoid; } .two figure { margin: 2mm 0 4mm; } .two figure img { width: 100%; }
+.note { background: #fff7e6; border-left: 3px solid #e0a100; padding: 2mm 3mm; margin: 2mm 0 4mm; font-size: 9.5pt; }
+.ok { background: #eef8ee; border-left: 3px solid #2e8b3d; padding: 2mm 3mm; margin: 2mm 0 4mm; font-size: 9.5pt; }
+.chat { border: 1px solid #ddd; border-radius: 2mm; padding: 2.5mm; margin: 3mm 0 4mm; background: #fafafa; break-inside: avoid; }
+.chat-title { font-weight: 600; font-size: 9.3pt; margin-bottom: 2mm; color: #333; }
+.bubble { padding: 1.6mm 2.6mm; border-radius: 2.5mm; margin: 1.4mm 0; max-width: 88%; font-size: 9.2pt; }
+.bubble.u { background: #c8102e; color: #fff; margin-left: auto; } .bubble.a { background: #ececec; }
+.status { display: inline-block; font-size: 7.5pt; padding: 0 1.6mm; border-radius: 2mm; margin-right: 1.5mm; background: #ffe2a8; } .status.ready { background: #bfe8c6; }
+.labeljson { font: 7.6pt Menlo, monospace; color: #555; margin-top: 1.2mm; word-break: break-word; }
+.svgwrap { text-align: center; margin: 3mm 0 4mm; break-inside: avoid; }
+.small { font-size: 8.8pt; color: #555; }
+.pagebreak { break-before: page; }
+pre { font: 8.4pt/1.35 Menlo, Consolas, monospace; background: #f4f4f4; padding: 2.5mm; border-radius: 1.5mm; white-space: pre-wrap; margin: 2mm 0 4mm; break-inside: avoid; }
+</style></head><body>
+
+<section class="cover">
+  <div class="band">BEWERBUNGSAUFGABE · .NET SOFTWARE ENGINEERING · TEC-IT DATENVERARBEITUNG GMBH</div>
+  <h1>Chat-Agent für druckfertige Getränkeetiketten</h1>
+  <div class="sub">Dokumentation der Lösung</div>
+  <dl>
+    <dt>Repository</dt><dd>https://github.com/valihagi/ChatAgentProject</dd>
+    <dt>Stand</dt><dd>29.09.2026</dd>
+    <dt>Technik</dt><dd>C# / ASP.NET Core (.NET 10), HTML/CSS/JavaScript, Google Gemini, TEC-IT Barcode API</dd>
+    <dt>Entwicklung</dt><dd>Claude Code (Modell Claude Sonnet 5.5), eine Sitzung; das Sitzungsprotokoll liegt bei</dd>
+    <dt>Aufgewendete Zeit</dt><dd>ca. 2 Std. 24 Min. (09:33 bis ca. 11:57 Uhr), siehe Kapitel 12</dd>
+  </dl>
+</section>
+
+<h2 style="margin-top:0">1 Zusammenfassung</h2>
+<p>Die Anwendung ist ein browserbasierter Chat, in dem Mitarbeitende Produkt- und Verpackungsangaben in natürlicher Sprache eingeben. Ein LLM-basierter Agent (Google Gemini) extrahiert daraus eine Etikettenspezifikation, erkennt fehlende oder widersprüchliche Angaben und fragt gezielt nach. Sobald die Angaben vollständig sind, prüft das Backend sie deterministisch (Prüfziffern, Barcode-Typ zur Verpackungsstufe, Datum, Nettovolumen, Alkoholgehalt), erzeugt über die <b>TEC-IT Barcode API</b> den Barcode und zeigt das fertige Etikett direkt im Chat an. Das Etikett kann gedruckt oder als PNG (vollständig oder nur der Barcode) heruntergeladen werden. Die Oberfläche ist zweisprachig (Deutsch/Englisch).</p>
+<div class="kpis">
+  <div class="kpi"><b>162</b><span>automatisierte Tests, alle bestanden</span></div>
+  <div class="kpi"><b>45+</b><span>Git-Commits in kleinen Schritten</span></div>
+  <div class="kpi"><b>13</b><span>unterstützte Barcode-Typen</span></div>
+  <div class="kpi"><b>~1,1k</b><span>Zeilen Backend-Code, ~1,4k Zeilen Tests</span></div>
+</div>
+<p>Die Aufgabe ist bewusst offen gestellt. Die wichtigsten Entscheidungen (Kapitel 4 und 5) sind: Das LLM extrahiert und fragt nach, während <b>deterministischer Code</b> validiert und die Barcode-Daten erzeugt; ein Zustand liegt im Browser, das Backend ist zustandslos; und der Umfang von „konform" wurde ausdrücklich auf <b>Barcode-/GS1-Korrektheit plus Nettovolumen und Alkoholgehalt</b> festgelegt (Kapitel 3).</p>
+
+<h2>2 Anforderungen und Erfüllung</h2>
+<table>
+<tr><th style="width:52%">Anforderung aus der Aufgabenstellung</th><th>Umsetzung</th></tr>
+<tr><td>Browserbasierte Full-Stack-Webanwendung</td><td>ASP.NET Core liefert API und Frontend aus; läuft lokal mit <code>dotnet run</code></td></tr>
+<tr><td>Backend mit C# und .NET</td><td>.NET 10, Minimal API, ca. 1.100 Zeilen</td></tr>
+<tr><td>Frontend mit HTML, CSS und JavaScript</td><td>Reines JavaScript ohne Build-Schritt (Chat, Etikettenkarte, Canvas-Export, Sprachumschaltung)</td></tr>
+<tr><td>Nutzbare Chat-Oberfläche für mehrstufige Interaktion</td><td>Verlauf, Rückfragen, Korrekturen nach dem Etikett, „Neuer Chat" (Kapitel 7)</td></tr>
+<tr><td>LLM-basierte Agentenkomponente</td><td>Gemini mit System-Prompt und strukturierter Ausgabe (JSON-Schema); Feedback-Runde bei Validierungsfehlern</td></tr>
+<tr><td>Integration der TEC-IT Barcode API</td><td><code>BarcodeClient</code> (POST, Fehlerbild-Erkennung, Größenprobe), 13 Barcode-Typen</td></tr>
+<tr><td>Erkennung unvollständiger oder widersprüchlicher Angaben</td><td>Zweistufig: LLM (Sprache) und <code>LabelValidator</code> (Regeln, Prüfziffern) – Beispiele in Kapitel 8</td></tr>
+<tr><td>Rückfragen bei fehlenden oder unklaren Angaben</td><td>Status <code>needs_info</code> mit maximal drei gezielten Fragen pro Runde</td></tr>
+<tr><td>Darstellung des Ergebnisses im Chat</td><td>Etikettenkarte mit Barcode, Produktangaben, Druck- und Download-Funktion</td></tr>
+<tr><td>Tests, Konfiguration, Prompts, Artefakte</td><td>162 Tests; Prompt in <code>Prompts/system-prompt.md</code>; README mit Einrichtung</td></tr>
+</table>
+
+<h2>3 Interpretation und Annahmen</h2>
+<p>Die Aufgabe verlangt „konforme, druckfertige Etiketten", stellt aber ausdrücklich keine Regelpakete bereit. Ich habe das wie folgt eingegrenzt und dokumentiert:</p>
+<ul>
+<li><b>Konformität</b> bedeutet hier: korrekte Barcode-Daten nach GS1 (Prüfziffern, Application Identifier, passender Typ je Verpackungsstufe) sowie zwei inhaltliche Regeln, die auf jedem Getränkeetikett vorkommen: <b>Nettovolumen</b> und <b>Alkoholgehalt</b>. Diese Regeln sind bewusst vereinfachte Annahmen und keine Rechtsberatung. Weitere Inhalte (Allergene, Zutaten, Produzentenadresse, Pfandzeichen …) sind als offene Punkte in Kapitel 10 aufgeführt.</li>
+<li><b>Verpackungsstufen</b>: Verbrauchereinheit (Flasche, Dose), Karton/Kasten (case) und Palette. Sie bestimmen den Standard-Barcode: EAN-13, EAN-14 bzw. GS1-128 (Palette mit SSCC).</li>
+<li><b>Ein Etikett pro Gespräch</b>. Mehrere Etiketten (Flasche, Karton, Palette) erfordern getrennte Chats.</li>
+<li><b>Barcode-Typen</b>: eine kuratierte Teilmenge aus Abschnitt 3 der API-Referenz – nur Typen, deren Datenformat der Validator selbst aufbauen kann (u. a. EAN-13/8/14, UPC-A, GS1-128, Code 128/39, QR, DataMatrix, GS1-2D, GS1 Digital Link).</li>
+<li><b>Zugangsdaten</b> der API sind „temporär"; der verwendete Zugang verhält sich wie ein Nicht-Abonnent (max. 300 DPI, kein SVG, Ratenlimit pro IP).</li>
+<li><b>GS1 Digital Link</b> verwendet den generischen GS1-Resolver (<code>id.gs1.org</code>), damit keine URL abgefragt werden muss.</li>
+</ul>
+
+<h2>4 Architektur</h2>
+<div class="svgwrap">
+<svg viewBox="0 0 700 250" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" font-size="12">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker></defs>
+  <rect x="10" y="90" width="120" height="70" rx="6" fill="#fff" stroke="#111827" stroke-width="1.6"/>
+  <text x="70" y="118" text-anchor="middle" font-weight="bold">Browser</text><text x="70" y="136" text-anchor="middle" font-size="10">Chat, Etikett, Druck</text><text x="70" y="149" text-anchor="middle" font-size="10">Zustand (label)</text>
+  <rect x="190" y="70" width="150" height="110" rx="6" fill="#111827"/>
+  <text x="265" y="98" text-anchor="middle" fill="#fff" font-weight="bold">LabelAgent</text>
+  <text x="265" y="118" text-anchor="middle" fill="#fff" font-size="10">1 Modell fragen</text><text x="265" y="132" text-anchor="middle" fill="#fff" font-size="10">2 Zustand zusammenführen</text>
+  <text x="265" y="146" text-anchor="middle" fill="#fff" font-size="10">3 validieren, 4 Größe prüfen</text><text x="265" y="160" text-anchor="middle" fill="#fff" font-size="10">5 Barcode rendern</text>
+  <rect x="420" y="10" width="140" height="60" rx="6" fill="#fff" stroke="#c8102e" stroke-width="1.6"/>
+  <text x="490" y="36" text-anchor="middle" font-weight="bold">Gemini (LLM)</text><text x="490" y="53" text-anchor="middle" font-size="10">extrahiert, fragt nach</text>
+  <rect x="420" y="95" width="140" height="60" rx="6" fill="#fff" stroke="#111827" stroke-width="1.6"/>
+  <text x="490" y="121" text-anchor="middle" font-weight="bold">LabelValidator</text><text x="490" y="138" text-anchor="middle" font-size="10">Prüfziffern, Regeln, Daten</text>
+  <rect x="420" y="180" width="140" height="60" rx="6" fill="#fff" stroke="#c8102e" stroke-width="1.6"/>
+  <text x="490" y="206" text-anchor="middle" font-weight="bold">TEC-IT Barcode API</text><text x="490" y="223" text-anchor="middle" font-size="10">liefert PNG (Barcode)</text>
+  <line x1="130" y1="125" x2="188" y2="125" stroke="#333" stroke-width="1.4" marker-end="url(#arr)"/>
+  <line x1="340" y1="90" x2="418" y2="45" stroke="#333" stroke-width="1.4" marker-end="url(#arr)"/>
+  <line x1="340" y1="125" x2="418" y2="125" stroke="#333" stroke-width="1.4" marker-end="url(#arr)"/>
+  <line x1="340" y1="160" x2="418" y2="205" stroke="#333" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="160" y="118" font-size="9" text-anchor="middle">POST /api/chat</text>
+  <text x="600" y="126" font-size="10" fill="#444">deterministisch</text>
+</svg></div>
+<p><b>Ablauf einer Runde.</b> Der Browser sendet den gesamten Gesprächsverlauf plus den zuletzt bekannten Etikettenzustand an <code>POST /api/chat</code>. Der <code>LabelAgent</code> lässt das Modell antworten (JSON: Nachricht, Status, Probleme, Etikettenfelder) und führt dessen Felder als <i>Patch</i> in den bisherigen Zustand ein. Meldet das Modell „bereit", validiert der <code>LabelValidator</code> das Etikett, baut die Barcode-Daten auf (z. B. <code>(01)14006381333938(15)261031(10)LOT42</code>) und – falls eine Größe verlangt wurde – prüft per Probe-Rendering, ob die Daten in die Fläche passen. Erst dann wird der Barcode bei TEC-IT angefordert und als PNG (Data-URL) zurückgegeben. Widerspricht die Validierung dem Modell, gehen die Befunde einmal an das Modell zurück, das daraus eine Rückfrage in der Sprache der Nutzerin bzw. des Nutzers formuliert.</p>
+<table>
+<tr><th>Baustein</th><th>Verantwortung</th></tr>
+<tr><td><code>Program.cs</code></td><td>Komposition, Endpunkt, Ratenbegrenzung, JSON-Fehlerbehandlung</td></tr>
+<tr><td><code>Agent/LabelAgent</code></td><td>Steuerung einer Runde, Feedback-Runde, Größenprobe, Logging</td></tr>
+<tr><td><code>Agent/LabelValidator</code>, <code>Gs1</code>, <code>NetVolume</code></td><td>Regeln, Prüfziffern, Nettovolumen, Aufbau der Barcode-Daten</td></tr>
+<tr><td><code>Chat/GeminiChatModel</code>, <code>MockChatModel</code></td><td>LLM-Anbindung (Schema, Datum, Wiederholung bei 503) bzw. Offline-Ersatz mit gleichem Protokoll</td></tr>
+<tr><td><code>Barcode/BarcodeClient</code>, <code>BarcodeRequest</code></td><td>Aufruf der TEC-IT API, Erkennung von Fehlerbildern, PNG-Breite</td></tr>
+<tr><td><code>wwwroot/*</code></td><td>Chat-UI, Etikettenkarte, Druck, Canvas-PNG-Export (<code>label-image.js</code>), Übersetzung (<code>i18n.js</code>)</td></tr>
+</table>
+
+<h2>5 Zentrale Entscheidungen</h2>
+<ol>
+<li><b>Das LLM extrahiert und fragt, Code validiert und baut.</b> Sprachmodelle rechnen Prüfziffern unzuverlässig, und die Barcode-API validiert GS1-Daten nicht (ein falsches Prüfzeichen wird trotzdem gezeichnet). Deshalb erzeugt nur der Validator die Barcode-Daten.</li>
+<li><b>Deterministische Pipeline statt Tool-Calling-Agent.</b> Ein fester Ablauf (extrahieren, validieren, rendern, höchstens eine Feedback-Runde) ist vorhersagbar und kostet wenige Anfragen – wichtig bei etwa 20 Anfragen pro Modell und Tag im kostenlosen Gemini-Kontingent. Eine Variante, in der das Modell Werkzeuge selbst aufruft, ist ein möglicher nächster Schritt.</li>
+<li><b>Zustandsloses Backend.</b> Der Browser schickt Verlauf und Etikettenzustand mit. Das Feld <code>label</code> des Modells wirkt als Patch (<i>null = unverändert</i>, Löschen nur über eine explizite Liste <code>cleared</code>), weil schwächere Modelle bekannte Felder gelegentlich weglassen.</li>
+<li><b>Die Antwort der Feedback-Runde wird nie gerendert.</b> Korrigiert das Modell dort still einen Wert (z. B. die Prüfziffer), wäre das eine Zahl, die niemand bestätigt hat. Es zählt nur eine Rückfrage; der Zustand behält den Originalwert.</li>
+<li><b>Strukturierte Ausgabe.</b> Gemini läuft mit JSON-Schema, alle Etikett-Schlüssel sind Pflicht (nullable) und beschrieben; Temperatur 0,2. Ohne <code>required</code> ließ das Modell Felder weg (siehe Kapitel 6).</li>
+<li><b>Das Etikett entsteht im Browser.</b> Die API liefert nur Barcodes; Text, Fakten und Layout gestaltet das Frontend (HTML-Karte für Bildschirm und Druck, Canvas-PNG mit 300-DPI-Kennung für den Download).</li>
+<li><b>Deterministische Größen.</b> Ohne Vorgabe wählt die API selbst einen Maßstab (ein langer GS1-128 war 240 mm breit). Das Backend setzt je Symbologie eine Modulbreite (EAN/UPC 0,33 mm, GS1-128 0,25 mm, 2D 0,5 mm); bei expliziter Größe wird <code>unit=fit</code> verwendet, weil <code>unit=mm</code> den Barcode abschneidet.</li>
+<li><b>Größenprüfung durch Messung.</b> Eine rechnerische Schätzung der Symbolbreite lag bis zu 40 % daneben. Stattdessen rendert das Backend einmal mit der kleinsten lesbaren Balkenbreite, liest die Breite aus dem PNG-Header und vergleicht.</li>
+<li><b>Geheimnisse und Konfiguration.</b> Zugangsdaten nur über Umgebungsvariablen oder <i>user-secrets</i>; die Anwendung startet nicht, wenn sie fehlen. Die Access-ID wird im POST-Body gesendet, nie in einer URL. Protokolle enthalten keine Nutzereingaben.</li>
+<li><b>Schutz von Kontingenten.</b> Größen- und Rollenprüfung der Anfrage, 12 Runden pro Minute und IP, Timeouts (Gemini 45 s, Barcode 20 s, Browser 90 s). Nur HTTP 503 wird (einmal) wiederholt; 429 ist ein Kontingentlimit, jede Wiederholung würde es weiter verbrauchen.</li>
+<li><b>Sprache.</b> Das Modell antwortet in der Sprache der Eingabe; die Oberfläche ist übersetzt (DE/EN). Hinweise des Backends (z. B. „GTIN um Prüfziffer ergänzt") reisen als sprachneutrale Codes und werden im Browser übersetzt.</li>
+<li><b>Reines JavaScript.</b> Kein Framework, kein Build-Schritt: Das Projekt bleibt klein und läuft mit dem .NET SDK allein.</li>
+</ol>
+
+<h2>6 Fehlversuche und Richtungswechsel</h2>
+<p>Die folgenden Punkte wurden im Verlauf entdeckt und behoben; sie sind auch im Sitzungsprotokoll nachvollziehbar.</p>
+<table>
+<tr><th style="width:30%">Beobachtung</th><th>Ursache und Konsequenz</th></tr>
+<tr><td>Erste API-Probe lieferte durchweg Fehlerbilder</td><td>Die Access-ID war leer (<code>user-secrets</code> kennt kein <code>get</code>). Probe wiederholt; dabei entdeckt: Fehler kommen als <b>HTTP 200 mit GIF</b>, <code>onerror=500</code> wird nicht beachtet – der Client erkennt Fehler am Medientyp.</td></tr>
+<tr><td>Barcode-Daten mit falscher Prüfziffer wurden gezeichnet</td><td>Die API prüft GS1-Daten nicht; Prüfziffern werden deshalb im Backend verifiziert.</td></tr>
+<tr><td><code>gemini-2.5-flash</code> antwortete 404</td><td>Modell für neue Nutzer abgeschaltet; Wechsel auf <code>gemini-3.8-flash</code>, das wiederholt mit 503 überlastet war, dann <code>gemini-3.5-flash</code> und zuletzt <code>gemini-3.5-flash-lite</code>. Das Modell ist per Konfiguration wählbar.</td></tr>
+<tr><td><code>unit=mm</code> schnitt den Barcode ab</td><td>Bei fester Größe wird <code>unit=fit</code> verwendet, das den ganzen Barcode einpasst.</td></tr>
+<tr><td>Barcodes waren ohne Vorgabe unbrauchbar groß (bis 240 mm)</td><td>Modulbreite je Symbologie (0,33 / 0,25 / 0,5 mm); EAN-13 ist nun 37,3 mm breit (GS1-Nennmaß).</td></tr>
+<tr><td>Wiederholung bei 429 verbrauchte Kontingent</td><td>Wiederholt wird nur 503, und nur einmal.</td></tr>
+<tr><td>Modell „reparierte" still eine Prüfziffer und meldete „bereit"</td><td>Antwort der Feedback-Runde wird nie gerendert (Entscheidung 4); Regressionstest.</td></tr>
+<tr><td>Response-Schema ließ Felder weg (nur der Produktname kam zurück)</td><td>Ursache: Schlüssel waren nicht <code>required</code>. Alle Etikett-Schlüssel sind nun Pflicht (nullable) und beschrieben; live bestätigt.</td></tr>
+<tr><td>Rechnerische Schätzung der Symbolbreite wich um bis zu 40 % ab</td><td>Ersetzt durch Messung über ein Probe-Rendering (Entscheidung 8).</td></tr>
+<tr><td>Ein Testhelfer überschrieb Testwerte und machte Tests wirkungslos</td><td>Beim Hinzufügen der Alkohol-Tests entdeckt und korrigiert.</td></tr>
+<tr><td>Download lieferte nur den Barcode, nicht das Etikett</td><td>Vollständiges Etikett wird im Browser per Canvas erzeugt; der reine Barcode bleibt als eigene Option.</td></tr>
+<tr><td>Umgebungsvariablen waren in der Entwicklungsumgebung nicht sichtbar</td><td>Wechsel auf <code>dotnet user-secrets</code>; README erklärt beide Wege.</td></tr>
+</table>
+
+<h2>7 Screenshots</h2>
+<div class="note">Die Screenshots zeigen die laufende Anwendung. Für die Bildschirmfotos wurde der <b>Mock-Modus</b> (deterministische Antworten, gleiches Protokoll) verwendet, um das begrenzte Gemini-Kontingent zu schonen; der Barcode kommt jeweils <b>live von der TEC-IT API</b>. Echte Gemini-Gespräche sind als Protokoll in Kapitel 8 wiedergegeben.</div>
+<div class="two">
+<figure><img src="screenshots/01-startseite-de.jpg"><figcaption><b>Abb. 1</b> Startseite (deutsch) mit Begrüßung, Sprachauswahl und „Neuer Chat".</figcaption></figure>
+<figure><img src="screenshots/02-chat-rueckfrage-und-etikett.jpg"><figcaption><b>Abb. 2</b> Mehrstufiger Dialog: unvollständige Angabe, Rückfrage nach der GTIN, danach die Etikettenkarte mit Barcode und den Aktionen „Etikett drucken", „Etikett herunterladen (PNG)" und „Nur Barcode" (Mock-Modus, Barcode live von TEC-IT).</figcaption></figure>
+</div>
+<div class="two">
+<figure><img src="screenshots/03-etikettenkarte-riesling-de.jpg"><figcaption><b>Abb. 3</b> Etikettenkarte mit Produktname, Volumen, Alkoholgehalt („Alkohol 12,5 % vol"), Barcode und Fakten. Die GTIN wurde um die Prüfziffer ergänzt, das Frontend zeigt dazu einen übersetzten Hinweis. Beispieldaten; der Barcode stammt von der TEC-IT API.</figcaption></figure>
+<figure><img src="screenshots/04-etikettenkarte-riesling-en.jpg"><figcaption><b>Abb. 4</b> Dieselbe Unterhaltung nach Umschalten auf Englisch: Beschriftungen, Hinweis und Dezimaltrennzeichen („12.5") wechseln sofort, auch beim bereits angezeigten Etikett.</figcaption></figure>
+</div>
+<div class="two">
+<figure><img src="screenshots/05-download-etikett.jpg"><figcaption><b>Abb. 5</b> Das heruntergeladene Etikett („Etikett herunterladen (PNG)"): eine PNG-Datei mit 300 DPI und Auflösungskennung (890 × 848 Pixel, ca. 75 × 72 mm) mit Titel, Volumen, Alkoholgehalt, Barcode in echter Größe und Fakten.</figcaption></figure>
+<figure><img src="screenshots/06-fehlerfall-server-nicht-erreichbar.jpg"><figcaption><b>Abb. 6</b> Fehlerfall (Server gestoppt): verständliche Meldung; der eingegebene Text bleibt im Eingabefeld, sodass er nicht neu getippt werden muss.</figcaption></figure>
+</div>
+<p class="small">Nicht als Screenshot enthalten: der Druckdialog des Browsers (nicht automatisiert aufnehmbar). „Etikett drucken" druckt nur die Etikettenkarte, nicht den Chat.</p>
+
+<h2 class="pagebreak" style="margin-top:0">8 Repräsentative Chatverläufe</h2>
+<p>Die folgenden Gespräche wurden mit dem <b>echten Gemini-Modell</b> und der <b>echten TEC-IT API</b> geführt (Protokolle im Repository unter <code>docs/samples/</code>). Unter jeder Antwort steht der vom Backend geführte Etikettenzustand. „Rückfrage" bedeutet <i>needs_info</i>, „bereit" bedeutet <i>ready</i> (Etikett wurde gerendert).</p>
+
+<h3>8.1 Aktuelle Konfiguration (gemini-3.5-flash-lite, Response-Schema, Inhaltsregeln)</h3>
+<div class="chat"><div class="chat-title">Weinetikett: Volumen und Alkoholgehalt (gemini-3.5-flash-lite)</div>
+<div class="bubble u">Riesling Qualitätswein 0,75 l, 12,5 % vol, Flasche, GTIN 4006381333931</div>
+<div class="bubble a"><span class="status ready">bereit</span>Der Riesling Qualitätswein (0,75 l, 12,5 % vol, Flasche) mit der GTIN 4006381333931 ist vollständig erfasst. Das Etikett wird als EAN13 erstellt.<div class="labeljson">Label-Zustand: productName=Riesling Qualitätswein, netVolume=0,75 l, alcoholic=true, alcoholPercent=12.5, packagingLevel=consumer_unit, symbology=EAN13, gtin=4006381333931</div></div>
+</div>
+<div class="chat"><div class="chat-title">Widerspruch: Apfelsaft mit 12 % vol (gemini-3.5-flash-lite)</div>
+<div class="bubble u">Apfelsaft naturtrüb 1 l Flasche mit 12 % vol, GTIN 4006381333931</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Ein Apfelsaft naturtrüb kann kein alkoholisches Getränk mit 12 % vol sein. Bitte korrigieren Sie entweder die Produktbeschreibung, entfernen Sie den Alkoholgehalt oder setzen Sie den Alkoholgehalt auf null (alkoholfrei).<div class="labeljson">Label-Zustand: productName=Apfelsaft naturtrüb, netVolume=1 l, alcoholic=true, alcoholPercent=12, packagingLevel=consumer_unit, symbology=EAN13, gtin=4006381333931</div></div>
+</div>
+<div class="chat"><div class="chat-title">Karton mit relativem Datum und zu kleiner Etikettengröße (gemini-3.5-flash-lite)</div>
+<div class="bubble u">Karton mit 12 Flaschen Apfelsaft 0,75 l, GTIN 14006381333938, GS1-128, Charge LOT42, MHD Ende nächsten Monats, Etikettengröße 60 mm x 30 mm</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Die Etikettenbreite von 60 mm ist zu klein für den GS1-128-Barcode mit den aktuellen Daten. Es werden mindestens 114 mm benötigt. Möchten Sie die Etikettengröße anpassen?<div class="labeljson">Label-Zustand: productName=Apfelsaft, netVolume=0,75 l, alcoholic=false, packagingLevel=case, symbology=GS1-128, gtin=14006381333938, batch=LOT42, bestBefore=2026-10-31, itemCount=12, widthMm=60, heightMm=30</div></div>
+</div>
+<p class="small">Zum letzten Gespräch: Das relative Datum wurde korrekt aufgelöst (2026-10-31, Erstellungsdatum 29.09.2026) und ohne unnötige Bestätigung übernommen. Die Größenwarnung stützt sich auf die Messung der API („mindestens 114 mm") und nicht auf eine Schätzung.</p>
+<div class="chat"><div class="chat-title">Datum in der Vergangenheit, Bestätigung durch die Nutzerin / den Nutzer (gemini-3.5-flash-lite)</div>
+<div class="bubble u">Cola Dose 0,33 l im Karton zu 24 Stück, GS1-128, GTIN 15449000000993, MHD 2020-03-31</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Das MHD 31.03.2020 liegt in der Vergangenheit. Ist das beabsichtigt (z. B. Nachdruck), oder soll ein anderes Datum verwendet werden?<div class="labeljson">Label-Zustand: productName=Cola Dose, netVolume=0,33 l, packagingLevel=case, symbology=GS1-128, gtin=15449000000993, bestBefore=2020-03-31, itemCount=24</div></div>
+<div class="bubble u">Ja, das ist ein Nachdruck für ein Archivmuster, das Datum ist so gewollt</div>
+<div class="bubble a"><span class="status ready">bereit</span>Der Nachdruck mit dem MHD vom 31.03.2020 wurde bestätigt. Das Etikett ist nun vollständig und bereit.<div class="labeljson">Label-Zustand: productName=Cola Dose, netVolume=0,33 l, packagingLevel=case, symbology=GS1-128, gtin=15449000000993, bestBefore=2020-03-31, allowPastDate=true, itemCount=24</div></div>
+</div>
+<div class="chat"><div class="chat-title">Wert zurücknehmen (gemini-3.5-flash-lite)</div>
+<div class="bubble u">Cola Dose 0,33 l, GS1-128, GTIN 5449000000996, Charge L1</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Für den GS1-128 Barcode wird neben der Charge und GTIN auch ein Mindesthaltbarkeitsdatum (MHD) benötigt. Welches Datum soll verwendet werden?<div class="labeljson">Label-Zustand: productName=Cola Dose, netVolume=0,33 l, alcoholic=false, packagingLevel=consumer_unit, symbology=GS1-128, gtin=5449000000996, batch=L1</div></div>
+<div class="bubble u">Doch keine Charge, bitte ohne</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Die Charge wurde entfernt. Für eine Cola-Dose als Handelseinheit ist der Standard-Barcode EAN13 bestens geeignet. Soll ich EAN13 verwenden und damit das Etikett erstellen?<div class="labeljson">Label-Zustand: productName=Cola Dose, netVolume=0,33 l, alcoholic=false, packagingLevel=consumer_unit, symbology=GS1-128, gtin=5449000000996</div></div>
+</div>
+<div class="note"><b>Beobachtung zum kleinen Modell:</b> Im Gespräch „Apfelsaft mit 12 % vol" stufte das Modell den Saft selbst als alkoholisch ein; der Widerspruch wurde also von der Argumentation des Modells erkannt und nicht von der Validierungsregel (die <code>alcoholic = false</code> voraussetzt). Außerdem fragte es im letzten Gespräch nach einem MHD, das gar nicht verlangt war. Die Inhaltsregeln hängen damit von der Klassifikation des Modells ab (Kapitel 9).</div>
+
+<h3>8.2 Frühere Gespräche (gemini-3.5-flash, vor Einführung von Schema und Inhaltsregeln)</h3>
+<p class="small">Diese Verläufe entstanden vor den späteren Änderungen (Response-Schema, Nettovolumen und Alkohol, Größenprüfung) und wurden auf der endgültigen Konfiguration <b>nicht wiederholt</b>.</p>
+<div class="chat"><div class="chat-title">Vage Angabe, dann GTIN (gemini-3.5-flash, vor dem Response-Schema)</div>
+<div class="bubble u">Ich brauche ein Etikett für unseren Apfelsaft naturtrüb, 0,75 l Flasche.</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Ich habe die Daten für Ihren Apfelsaft naturtrüb (0,75 l Flasche) erfasst. Für das Flaschenetikett (Consumer Unit) wird standardmäßig ein EAN-13 Barcode verwendet. Dafür benötige ich noch die GTIN (EAN-Nummer). Könnten Sie mir diese bitte mitteilen?</div>
+<div class="bubble u">Die GTIN ist 4006381333931</div>
+<div class="bubble a"><span class="status ready">bereit</span>Vielen Dank! Die GTIN wurde erfolgreich erfasst. Das Etikett für den Apfelsaft naturtrüb (0,75 l Flasche) mit EAN-13 Barcode ist nun vollständig und bereit für den Druck.</div>
+</div>
+<div class="chat"><div class="chat-title">Widersprüchliche Angaben in einer Nachricht (gemini-3.5-flash, vor dem Response-Schema)</div>
+<div class="bubble u">Palettenetikett für 6er-Tray Cola 0,33 l Dosen, EAN13 Code 5449000000996, Charge L2024-17, MHD 31.03.2020</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Ich habe Ihre Angaben erfasst, es gibt jedoch noch Klärungsbedarf:<br>1. <b>Barcode-Typ &amp; Daten</b>: Sie haben EAN13 gewünscht, aber EAN13 kann keine Charge und kein MHD im Barcode speichern. Für Paletten mit diesen Daten wird der Standard <b>GS1-128</b> genutzt. Sollen wir auf GS1-128 wechseln?<br>2. <b>MHD in der Vergangenheit</b>: Das Datum 31.03.2020 liegt in der Vergangenheit. Bitte bestätigen oder korrigieren Sie das Datum.<br>3. <b>SSCC (NVE)</b>: Für ein Palettenetikett wird eine 18-stellige SSCC benötigt. Haben Sie diese zur Hand, oder handelt es sich doch um ein Karton-/Tray-Etikett (Case)?</div>
+</div>
+<div class="chat"><div class="chat-title">Falsche Prüfziffer (gemini-3.5-flash, vor dem Response-Schema)</div>
+<div class="bubble u">Etikett für Orangensaft 1 l Flasche, EAN13 4006381333932</div>
+<div class="bubble a"><span class="status needs_info">Rückfrage</span>Die eingegebene GTIN 4006381333932 ist leider ungültig, da die Prüfziffer nicht korrekt ist (erwartet wird eine 1 am Ende, also 4006381333931). Bitte prüfen Sie die Nummer und korrigieren Sie sie.</div>
+</div>
+<div class="chat"><div class="chat-title">Änderung nach fertigem Etikett (gemini-3.5-flash, vor dem Response-Schema)</div>
+<div class="bubble u">Cola 0,33 l Dose, GTIN 5449000000996</div>
+<div class="bubble a"><span class="status ready">bereit</span>Ich habe die Spezifikation für das Cola-Dosen-Etikett (Einzelartikel) mit der GTIN 5449000000996 und dem Standard-Barcode EAN-13 erstellt. Das Etikett ist bereit zur Erstellung.</div>
+<div class="bubble u">Nimm lieber einen QR-Code mit Digital Link und Charge L42 dazu</div>
+<div class="bubble a"><span class="status ready">bereit</span>Ich habe die Spezifikation angepasst: Der Barcode wurde auf einen GS1 Digital Link QR-Code umgestellt und die Chargennummer &#x27;L42&#x27; wurde hinzugefügt. Das Etikett ist bereit zur Erstellung.</div>
+</div>
+
+<h2>9 Tests, Qualitätssicherung und Betrieb</h2>
+<div class="ok"><b>162 von 162 Tests bestanden</b> (<code>dotnet test</code>, ca. 0,8 s). Kein Test verwendet das Netzwerk oder das Gemini-Kontingent: fehlerhafte und erfolgreiche HTTP-Antworten werden mit Fake-Handlern nachgestellt.</div>
+<table>
+<tr><th style="width:24%">Bereich</th><th>Abgedeckt</th></tr>
+<tr><td>Validator</td><td>GTIN-/SSCC-Prüfziffern, jede Barcode-Familie (EAN/UPC, GS1-128, GS1-2D, Digital Link, Code 128/39, QR/DataMatrix), Verpackungsstufe, Datum, Nettovolumen, Alkoholgehalt, Größenregeln</td></tr>
+<tr><td>Agent</td><td>Bereit-/Rückfrage-Pfad, Feedback-Runde (inkl. „korrigierter Wert wird nie gerendert"), Zustands-Patch, Normalisierung, Größenprobe, Logging ohne Nutzerwerte</td></tr>
+<tr><td>Clients</td><td>Gemini (Systemprompt mit Datum, Schema, Wiederholung nur bei 503, Timeouts, Nicht-JSON-Fehler), Barcode-Client (Fehlerbilder, Netzwerkfehler, Access-ID im Body)</td></tr>
+<tr><td>HTTP-Endpunkt</td><td>Prozessinterner Server: Anfragegrenzen, Ratenbegrenzung, Fehlerantworten, Auslieferung des Frontends</td></tr>
+<tr><td>Konfiguration</td><td>Provider-Auswahl (unbekannter Wert und fehlende Schlüssel brechen den Start ab)</td></tr>
+</table>
+<p><b>Nicht automatisiert getestet:</b> das JavaScript-Frontend (manuell im Browser geprüft), der echte Druck sowie das Verhalten der Live-Modelle (in gezielten Live-Sitzungen geprüft, siehe Kapitel 8).</p>
+<p><b>Protokollierung.</b> Standard-Konsolenprotokoll mit Rundenergebnis, Namen fehlgeschlagener Validierungsfelder, Antwortzeiten und Fehlern von Gemini und Barcode-API – ohne Nutzertexte, Werte oder Zugangsdaten.</p>
+
+<h3>Beispiel-Etiketten</h3>
+<p>Das vollständige Etikett zeigt Abb. 5. Die folgenden Barcodes stammen direkt von der TEC-IT API, mit genau den Parametern, die die Anwendung erzeugt (300 DPI, Modulbreite je Symbologie). Sie sind hier nicht maßstäblich dargestellt.</p>
+<div class="two">
+<figure><img src="samples/barcode-only-ean13-riesling.png" style="width:70%"><figcaption><b>Abb. 7</b> Verbrauchereinheit: EAN-13, 37,3 × 26,5 mm (GS1-Nennmaß). Die GTIN wurde um die Prüfziffer ergänzt.</figcaption></figure>
+<figure><img src="samples/barcode-only-digital-link-qr.png" style="width:40%"><figcaption><b>Abb. 8</b> GS1 Digital Link als QR-Code (14,6 mm): <code>id.gs1.org/01/04006381333931/10/L2026-14?15=281231</code>.</figcaption></figure>
+</div>
+<figure><img src="samples/barcode-only-gs1-128-karton.png" style="width:96%"><figcaption><b>Abb. 9</b> Karton: GS1-128 mit GTIN-14, Mindesthaltbarkeitsdatum, Stückzahl und Charge: <code>(01)14006381333938(15)261031(37)12(10)LOT42</code>. Bei 0,25 mm Balkenbreite ist der Code 113 mm breit; für kleinere Etiketten warnt die Größenprüfung.</figcaption></figure>
+<figure><img src="samples/barcode-only-gs1-128-palette-sscc.png" style="width:60%"><figcaption><b>Abb. 10</b> Palette: GS1-128 mit SSCC <code>(00)340123450000000017</code> (Prüfziffer im Backend berechnet und geprüft), 50 mm breit.</figcaption></figure>
+
+<h2>10 Offene Punkte (Etiketteninhalt, nicht abgedeckt)</h2>
+<p>Bewusst nicht umgesetzt, weil die Aufgabe keine Regelpakete liefert und der Umfang begrenzt ist:</p>
+<ul>
+<li>Allergenkennzeichnung (z. B. Sulfite) sowie Zutatenliste und Nährwerttabelle</li>
+<li>Name und Anschrift von Hersteller oder Abfüller</li>
+<li>Pfandzeichen und Recycling-Symbole</li>
+<li>Herkunftsland, marktspezifische Chargen-/Datumsregeln, gesetzlich vorgeschriebene Füllmengen</li>
+<li>Marktvarianten (EU vs. USA/UPC-A) über die Wahl des Barcode-Typs hinaus</li>
+<li>Layout-Vorgaben (Mindestschriftgrößen, e-Zeichen) und ein festes Etikettenraster mit mehreren Barcodes</li>
+</ul>
+
+<h2>11 Bekannte Einschränkungen und nächste Schritte</h2>
+<h3>Einschränkungen</h3>
+<ul>
+<li>Ausgabe ist ein <b>PNG mit 300 DPI</b> (Grenze des verwendeten Zugangs, kein SVG); sehr große Druckformate sind nicht scharf. Der Browserdruck ist nur bei 100 % Skalierung maßstäblich.</li>
+<li>Barcodes wurden <b>nicht mit einem Scanner geprüft</b>; die Größenprüfung nutzt angenäherte GS1-Mindestbalkenbreiten. Die Trennung variabler GS1-Felder (FNC1) übernimmt die API und wurde nicht separat verifiziert.</li>
+<li>Die Regeln zu Alkoholgehalt und Nettovolumen sind <b>vereinfachte Annahmen</b>; die Alkoholregel hängt von der Modellklassifikation (<code>alcoholic</code>) ab und kann durch Fehlklassifikation umgangen werden.</li>
+<li>Ein Etikett je Gespräch; GS1 Digital Link zeigt auf den generischen GS1-Resolver, der nur registrierte GTINs auflöst.</li>
+<li>Das kostenlose Gemini-Kontingent ist klein (ca. 20 Anfragen pro Modell und Tag) und gelegentlich überlastet (503); die Anwendung meldet das, kann es aber nicht umgehen.</li>
+<li>Meldungen des Servers (Fehler, Rückfalltext des Validators) sind englisch; Oberfläche und Hinweise sind übersetzt, das Modell antwortet in der Eingabesprache.</li>
+<li>Kein Verlauf über das Neuladen hinaus, keine Authentifizierung, kein HTTPS – gedacht für den lokalen Betrieb.</li>
+<li>Die Live-Prüfung der endgültigen Konfiguration erfolgte mit <code>gemini-3.5-flash-lite</code>; ein Teil der früheren Szenarien wurde nicht wiederholt (Kapitel 8.2).</li>
+</ul>
+<h3>Nächste Schritte</h3>
+<ol>
+<li>Etiketteninhalte aus Kapitel 10 als Regelpaket ergänzen (je Markt konfigurierbar).</li>
+<li>Mehrere Etiketten je Gespräch (Flasche, Karton, Palette aus einer Beschreibung).</li>
+<li>Tool-Calling-Variante des Agenten (Modell ruft <code>validate</code> und <code>render</code> selbst auf) und Vergleich mit der festen Pipeline.</li>
+<li>Prüfung mit Scanner bzw. Barcode-Verifier; Vektorausgabe (SVG/PDF) mit einem Abonnement-Zugang.</li>
+<li>Persistenz des Verlaufs, Authentifizierung und Bereitstellung in einer Testumgebung.</li>
+<li>Automatisierte Frontend-Tests und ein wiederholbares Live-Testskript für die Modellszenarien.</li>
+</ol>
+
+<h2>12 Aufgewendete Zeit und Entwicklungsprozess</h2>
+<table>
+<tr><th style="width:36%">Angabe</th><th>Wert</th></tr>
+<tr><td>Beginn</td><td>29.09.2026, 09:33 Uhr (Anlegen des Projektordners; erster Commit 09:49 Uhr)</td></tr>
+<tr><td>Stand bei Erstellung dieser Dokumentation</td><td>ca. 11:57 Uhr</td></tr>
+<tr><td>Dauer (Wanduhr)</td><td><b>ca. 2 Std. 24 Min.</b> Wanduhrzeit, einschließlich der Wartezeiten auf überlastete oder ausgeschöpfte Gemini-Modelle und der Analyse der API-Eigenheiten</td></tr>
+<tr><td>Nicht enthalten</td><td>der abschließende manuelle Test durch den Autor sowie Export und Bereinigung des Sitzungsprotokolls</td></tr>
+</table>
+<p><b>Vorgehen.</b> Die Lösung entstand mit dem Coding-Agenten Claude Code (Modell Claude Sonnet 5.5) in einer Sitzung: Aufgaben und API-Referenz lesen, Grundgerüst (Backend, minimales Frontend, Git, .gitignore), Barcode-Client mit Erkundung der echten API, Agent und Validator, Etikettendarstellung, Härtung (Grenzen, Zeitlimits, Logging), Zweisprachigkeit, Größenprüfung, Live-Tests mit Gemini, Code-Review mit anschließender Fehlerbehebung, Dokumentation. Das Protokoll enthält die Fehlversuche (Kapitel 6). Der Verlauf ist in über 45 kleinen Commits nachvollziehbar; der System-Prompt liegt im Repository (<code>src/ChatAgent.Api/Prompts/system-prompt.md</code>).</p>
+<p><b>Einrichtung und Bedienung</b> sind im <code>README.md</code> beschrieben (Voraussetzungen, Zugangsdaten per Umgebungsvariable oder <i>user-secrets</i> für macOS, Linux und Windows, Start mit Gemini oder Mock, Tests, Fehlerbehebung, Konfigurationsreferenz).</p>
+<pre>git clone https://github.com/valihagi/ChatAgentProject.git
+cd ChatAgentProject
+dotnet user-secrets set TECIT_ACCESS_ID "&lt;id&gt;"  --project src/ChatAgent.Api
+dotnet user-secrets set GEMINI_API_KEY  "&lt;key&gt;" --project src/ChatAgent.Api
+dotnet run --project src/ChatAgent.Api        # http://localhost:5080  (offline: Chat__Provider=Mock)</pre>
+</body></html>

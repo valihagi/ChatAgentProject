@@ -31,7 +31,8 @@ src/ChatAgent.Api
   Prompts/system-prompt.md   the agent's system prompt
   wwwroot/               index.html, app.js (chat UI), i18n.js (EN/DE), label-image.js (label PNG), style.css
 tests/ChatAgent.Tests    unit and HTTP endpoint tests
-docs/samples             live chat transcripts and a sample barcode
+docs/Dokumentation_Label_Chat_Agent.pdf   German documentation (scope, decisions, screenshots, chats, limitations, time)
+docs/dokumentation.html  source of the PDF; docs/screenshots and docs/samples hold its images and live transcripts
 ```
 
 ## Setup for a new user

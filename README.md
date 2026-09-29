@@ -22,5 +22,17 @@ Secrets come from environment variables only and are never committed.
 | `Gemini__Model` | Optional model override |
 | `TECIT_ACCESS_ID` | TEC-IT Barcode API access id |
 
+## Barcode API notes (observed)
+- Requests are sent as POST so the access id never appears in a URL.
+- Errors are returned as HTTP 200 with an `image/gif` error bitmap (`onerror=500` is not honoured), so the client treats any media type different from the requested one as a failure.
+- This access id behaves like a non-subscriber: max 300 DPI, no SVG, per-IP rate limit.
+- The API does not validate GS1 check digits (a wrong GTIN check digit in GS1-128 still renders), so the backend must validate them.
+
+## Tests
+```bash
+dotnet test
+```
+No test touches the network or the Gemini quota (fake HTTP handlers).
+
 ## Status
-Base setup: chat UI + `POST /api/chat`. Agent logic and barcode integration are next.
+Chat UI, `POST /api/chat`, Barcode API client and a draft system prompt (`src/ChatAgent.Api/Prompts/system-prompt.md`) are in place. Parsing the agent's JSON, validation rules and showing the label in the chat are next.

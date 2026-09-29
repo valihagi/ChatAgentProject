@@ -118,6 +118,46 @@ public class LabelAgentTests
     }
 
     [Fact]
+    public async Task Ready_reply_reports_the_dpi_and_announces_a_computed_check_digit()
+    {
+        var twelve = GoodLabel with { Gtin = "400638133393" };
+        var model = new ScriptedModel(new AgentReply { Message = "Done", Status = "ready", Label = twelve });
+
+        var response = await Agent(model, new FakeBarcodes()).HandleAsync(Say("go"), default);
+
+        Assert.Equal(300, response.Dpi);
+        Assert.Equal("4006381333931", response.Label.Gtin);
+        Assert.EndsWith("GTIN completed with check digit: 4006381333931", response.Reply);
+    }
+
+    [Fact]
+    public async Task Messy_model_output_is_normalized_before_validation()
+    {
+        var messy = new LabelSpec
+        {
+            ProductName = " Apfelsaft ", PackagingLevel = "Consumer-Unit", Symbology = "ean13",
+            Gtin = "4006 3813 33931", Batch = "", Sscc = "  ",
+        };
+        var model = new ScriptedModel(new AgentReply { Message = "Done", Status = " Ready ", Label = messy });
+        var barcodes = new FakeBarcodes();
+
+        var response = await Agent(model, barcodes).HandleAsync(Say("go"), default);
+
+        Assert.Equal("ready", response.Status);
+        Assert.Equal(("EAN13", "consumer_unit", "Apfelsaft", null), (response.Label.Symbology, response.Label.PackagingLevel, response.Label.ProductName, response.Label.Batch));
+        Assert.Equal("4006381333931", barcodes.Requests.Single().Data);
+    }
+
+    [Fact]
+    public async Task Json_with_null_label_and_issues_does_not_crash()
+    {
+        var response = await Agent(new RawModel("""{"message":"hi","status":"needs_info","issues":null,"label":null}"""),
+            new FakeBarcodes()).HandleAsync(Say("go"), default);
+
+        Assert.Equal("hi", response.Reply);
+    }
+
+    [Fact]
     public async Task Previous_label_state_is_attached_to_the_last_user_message()
     {
         var model = new ScriptedModel(new AgentReply { Message = "ok" });

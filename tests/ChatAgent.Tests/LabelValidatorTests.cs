@@ -52,9 +52,35 @@ public class LabelValidatorTests
         Assert.Null(r.Request.Width);
     }
 
+    [Theory]
+    [InlineData("EAN13", "400638133393", "4006381333931")]
+    [InlineData("EAN8", "9638507", "96385074")]
+    [InlineData("UPCA", "03600029145", "036000291452")]
+    [InlineData("EAN14", "1400638133393", "14006381333938")]
+    public void Missing_check_digit_is_computed_and_returned_in_the_label(string symbology, string given, string full)
+    {
+        var level = symbology == "EAN14" ? "case" : "consumer_unit"; // EAN-14 is a trade-unit code
+        var r = Check(Bottle(s => s with { Symbology = symbology, Gtin = given, PackagingLevel = level }));
+
+        Assert.True(r.Ok);
+        Assert.Equal(full, r.Request!.Data);
+        Assert.Equal(full, r.Label.Gtin);
+    }
+
     [Fact]
-    public void Ean13_accepts_12_digits_because_the_api_adds_the_check_digit() =>
-        Assert.True(Check(Bottle(s => s with { Gtin = Gtin13[..12] })).Ok);
+    public void Complete_gtin_is_left_unchanged() =>
+        Assert.Equal(Gtin13, Check(Bottle()).Label.Gtin);
+
+    [Fact]
+    public void Past_best_before_date_is_accepted_once_the_user_confirmed_it()
+    {
+        var past = Bottle(s => s with { Symbology = "GS1-128", BestBefore = "2020-03-31" });
+
+        AssertIssue(Check(past), "bestBefore", "conflict");
+        var confirmed = Check(past with { AllowPastDate = true });
+        Assert.True(confirmed.Ok);
+        Assert.Contains("(15)200331", confirmed.Request!.Data);
+    }
 
     [Fact]
     public void Wrong_check_digit_is_reported_with_the_expected_digit()

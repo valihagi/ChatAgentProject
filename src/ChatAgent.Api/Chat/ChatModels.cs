@@ -9,7 +9,8 @@ public record ChatRequest(List<ChatMessage> Messages, LabelSpec? Label = null);
 
 /// <param name="Status">"needs_info" or "ready"</param>
 /// <param name="Image">Data URL of the generated label barcode, only when ready.</param>
-public record ChatResponse(string Reply, string Status, LabelSpec Label, string? Image);
+/// <param name="Dpi">Resolution of <paramref name="Image"/>, needed to print it at its physical size.</param>
+public record ChatResponse(string Reply, string Status, LabelSpec Label, string? Image, int Dpi = LabelValidator.Dpi);
 
 public interface IChatModel
 {

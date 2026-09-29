@@ -3,7 +3,8 @@ using ChatAgent.Api.Barcode;
 
 namespace ChatAgent.Api.Agent;
 
-public record ValidationResult(List<AgentIssue> Issues, BarcodeRequest? Request)
+/// <param name="Label">The specification with derived values filled in (e.g. a computed GTIN check digit).</param>
+public record ValidationResult(List<AgentIssue> Issues, BarcodeRequest? Request, LabelSpec Label)
 {
     public bool Ok => Issues.Count == 0 && Request is not null;
 }
@@ -56,8 +57,8 @@ public static partial class LabelValidator
         {
             if (!DateOnly.TryParseExact(s.BestBefore, "yyyy-MM-dd", out var date))
                 Add("bestBefore", "invalid", $"'{s.BestBefore}' is not a valid date (expected yyyy-MM-dd).");
-            else if (date < today)
-                Add("bestBefore", "conflict", $"Best-before date {s.BestBefore} is in the past.");
+            else if (date < today && s.AllowPastDate != true)
+                Add("bestBefore", "conflict", $"Best-before date {s.BestBefore} is in the past. Ask the user to confirm it is intended.");
             else yymmdd = date.ToString("yyMMdd");
         }
         if (s.ItemCount is < 1 or > 99999999) Add("itemCount", "invalid", "Item count must be between 1 and 99999999.");
@@ -84,13 +85,14 @@ public static partial class LabelValidator
         }
 
         var data = symbology is null ? null : BuildData(symbology, s, yymmdd, hasAttributes, Add);
-        if (issues.Count > 0 || symbology is null || data is null) return new(issues, null);
+        if (issues.Count > 0 || symbology is null || data is null) return new(issues, null, s);
 
         var request = new BarcodeRequest(symbology, data) { Dpi = Dpi };
         request = s.WidthMm is { } w && s.HeightMm is { } h
             ? request with { Unit = "fit", Width = w, Height = h }                // scales the symbol into the box (unit=mm would crop it)
             : request with { Unit = "mm", ModuleWidth = ModuleWidthMm(symbology) }; // deterministic physical size
-        return new(issues, request);
+        // For EAN/UPC codes `data` is the GTIN including a check digit we may have computed.
+        return new(issues, request, Linear.ContainsKey(symbology) ? s with { Gtin = data } : s);
     }
 
     /// <summary>
@@ -115,7 +117,8 @@ public static partial class LabelValidator
                 return Fail("gtin", $"{symbology} needs {string.Join(" or ", rule.Lengths)} digits, got '{s.Gtin}'.", add);
             if (s.Gtin.Length == rule.Full && !Gs1.HasValidCheckDigit(s.Gtin))
                 return Fail("gtin", $"'{s.Gtin}' has a wrong check digit (expected {Gs1.CheckDigit(s.Gtin[..^1])}).", add);
-            return NoAttributes(symbology, hasAttributes, add) ? s.Gtin : null;
+            var full = s.Gtin.Length == rule.Full ? s.Gtin : s.Gtin + Gs1.CheckDigit(s.Gtin);
+            return NoAttributes(symbology, hasAttributes, add) ? full : null;
         }
 
         if (Gs1Element.Contains(symbology))

@@ -26,7 +26,7 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
             return new(reply.Message, "needs_info", reply.Label, null);
 
         var result = LabelValidator.Validate(reply.Label, today);
-        if (result.Ok) return await RenderAsync(reply, result.Request!, ct);
+        if (result.Ok) return await RenderAsync(reply, result, ct);
 
         // Keep the label exactly as the user gave it, whatever the second answer contains.
         var retry = Parse(await CompleteAsync([.. history, new("agent", raw), new("user", FeedbackFor(result.Issues))], ct));
@@ -37,13 +37,19 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
         return new(text, "needs_info", reply.Label, null);
     }
 
-    private async Task<ChatResponse> RenderAsync(AgentReply reply, BarcodeRequest barcode, CancellationToken ct)
+    private async Task<ChatResponse> RenderAsync(AgentReply reply, ValidationResult validated, CancellationToken ct)
     {
         try
         {
-            var image = await barcodes.GenerateAsync(barcode, ct);
+            var image = await barcodes.GenerateAsync(validated.Request!, ct);
             var dataUrl = $"data:{image.ContentType};base64,{Convert.ToBase64String(image.Content)}";
-            return new(reply.Message, "ready", reply.Label, dataUrl);
+
+            // Be transparent when we derived a value the user did not type.
+            var message = reply.Message;
+            if (validated.Label.Gtin != reply.Label.Gtin)
+                message += $"\n\nGTIN completed with check digit: {validated.Label.Gtin}";
+
+            return new(message, "ready", validated.Label, dataUrl);
         }
         catch (BarcodeException ex)
         {
@@ -61,8 +67,14 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
     {
         try
         {
-            return JsonSerializer.Deserialize<AgentReply>(raw, JsonSerializerOptions.Web)
-                   ?? throw new JsonException("empty");
+            var reply = JsonSerializer.Deserialize<AgentReply>(raw, JsonSerializerOptions.Web)
+                        ?? throw new JsonException("empty");
+            return reply with
+            {
+                Status = (reply.Status ?? "").Trim().ToLowerInvariant(),
+                Issues = reply.Issues ?? [],
+                Label = (reply.Label ?? new()).Normalized(),
+            };
         }
         catch (JsonException ex)
         {

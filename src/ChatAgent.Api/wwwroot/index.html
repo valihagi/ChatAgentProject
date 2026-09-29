@@ -9,16 +9,23 @@
 <body>
   <main class="chat">
     <header>
-      <span class="title">Label Chat Agent <small>beverage labels</small></span>
-      <button id="reset" type="button" class="ghost">New chat</button>
+      <span class="title">Label Chat Agent <small data-i18n="subtitle">beverage labels</small></span>
+      <span class="tools">
+        <select id="language" class="ghost" data-i18n-aria="language" aria-label="Language">
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+        </select>
+        <button id="reset" type="button" class="ghost" data-i18n="newChat">New chat</button>
+      </span>
     </header>
     <div id="history" class="history" aria-live="polite"></div>
     <form id="form" class="composer">
-      <input id="input" type="text" placeholder="Describe your product…" autocomplete="off" autofocus>
-      <button id="send" type="submit">Send</button>
+      <input id="input" type="text" data-i18n-placeholder="placeholder" placeholder="Describe your product…" autocomplete="off" autofocus>
+      <button id="send" type="submit" data-i18n="send">Send</button>
     </form>
   </main>
   <div id="print-area"></div>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

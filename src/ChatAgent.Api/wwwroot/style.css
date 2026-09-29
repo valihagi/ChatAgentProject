@@ -22,6 +22,7 @@ header {
   padding: .8rem 1rem; border-bottom: 3px solid var(--brand);
 }
 .title { font-weight: 700; }
+.tools { display: flex; gap: .5rem; align-items: center; }
 .title small { font-weight: 400; color: var(--muted); margin-left: .4rem; }
 
 .history { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .6rem; }
@@ -41,6 +42,7 @@ header {
 .details dt { color: #666; }
 .details dd { margin: 0; }
 .actions { display: flex; align-items: center; gap: 1rem; margin-top: .5rem; }
+.label-note, .note { margin: .5rem 0 0; font-size: .85rem; color: var(--muted); }
 .actions a { font-size: .85rem; color: var(--brand); }
 
 #print-area { display: none; }
@@ -60,4 +62,4 @@ header {
 .composer input:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
 button { padding: .65rem 1.2rem; border: 0; border-radius: 10px; background: var(--brand); color: #fff; font: inherit; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
-button.ghost { padding: .35rem .8rem; background: transparent; color: var(--muted); border: 1px solid var(--border); font-size: .85rem; }
+select.ghost, button.ghost { padding: .35rem .8rem; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; font: inherit; font-size: .85rem; }

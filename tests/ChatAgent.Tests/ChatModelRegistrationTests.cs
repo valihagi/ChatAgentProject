@@ -9,7 +9,7 @@ public class ChatModelRegistrationTests
     private static IChatModel Resolve(params (string Key, string Value)[] settings)
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings.Select(x => new KeyValuePair<string, string?>(x.Key, x.Value))).Build();
-        var services = new ServiceCollection().AddSingleton<IConfiguration>(config).AddChatModel(config);
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(config).AddSingleton(TimeProvider.System).AddChatModel(config);
         return services.BuildServiceProvider().GetRequiredService<IChatModel>();
     }
 

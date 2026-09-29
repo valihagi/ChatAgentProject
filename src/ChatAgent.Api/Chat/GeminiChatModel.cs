@@ -1,16 +1,19 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using ChatAgent.Api.Barcode;
 
 namespace ChatAgent.Api.Chat;
 
-public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatModel
+public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvider time) : IChatModel
 {
     private readonly string _model = config["Gemini:Model"] ?? "gemini-3.5-flash";
     private readonly string _apiKey = config["GEMINI_API_KEY"]
         ?? throw new InvalidOperationException("GEMINI_API_KEY is not set.");
 
-    private readonly string _systemPrompt = File.ReadAllText(
+    private readonly string _promptTemplate = File.ReadAllText(
         Path.Combine(AppContext.BaseDirectory, "Prompts", "system-prompt.md"));
 
     private const int MaxRetries = 2;
@@ -20,10 +23,19 @@ public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatMode
 
     public async Task<string> CompleteAsync(IReadOnlyList<ChatMessage> history, CancellationToken ct)
     {
+        var today = DateOnly.FromDateTime(time.GetLocalNow().DateTime).ToString("yyyy-MM-dd (dddd)", CultureInfo.InvariantCulture);
+
         var body = new
         {
-            systemInstruction = new { parts = new[] { new { text = _systemPrompt } } },
-            generationConfig = new { responseMimeType = "application/json" },
+            systemInstruction = new { parts = new[] { new { text = _promptTemplate.Replace("{{today}}", today) } } },
+            // Low temperature: this is extraction, not creative writing. The schema guarantees parseable output.
+            generationConfig = new
+            {
+                responseMimeType = "application/json",
+                responseSchema = ResponseSchema,
+                temperature = 0.2,
+                maxOutputTokens = 4096,
+            },
             contents = history.Select(m => new
             {
                 role = m.Role == "user" ? "user" : "model",
@@ -31,7 +43,8 @@ public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatMode
             })
         };
 
-        // Free-tier Gemini often answers 503 (overloaded) or 429 (rate limit); retry briefly.
+        // Free-tier Gemini is often overloaded (503): retry briefly. A 429 is a quota limit that a
+        // few seconds will not clear, and every retry would count against it, so it fails immediately.
         for (var attempt = 0; ; attempt++)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post,
@@ -41,17 +54,74 @@ public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatMode
             };
             request.Headers.Add("x-goog-api-key", _apiKey);
 
-            using var response = await http.SendAsync(request, ct);
-            var json = await response.Content.ReadFromJsonAsync<JsonNode>(ct);
+            using var response = await SendAsync(request, ct);
+            var json = ParseJson(await response.Content.ReadAsStringAsync(ct));
 
             if (response.IsSuccessStatusCode)
                 return json?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
 
-            var retryable = response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.TooManyRequests;
-            if (!retryable || attempt >= MaxRetries)
+            if (response.StatusCode != HttpStatusCode.ServiceUnavailable || attempt >= MaxRetries)
                 throw new HttpRequestException($"Gemini returned {(int)response.StatusCode}: {json?["error"]?["message"]}");
 
             await Task.Delay(RetryDelay * (attempt + 1), ct);
         }
     }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        try { return await http.SendAsync(request, ct); }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested) // HttpClient timeout
+        {
+            throw new HttpRequestException("Gemini did not answer in time.");
+        }
+    }
+
+    /// <summary>Error bodies from proxies or gateways are not always JSON.</summary>
+    private static JsonNode? ParseJson(string text)
+    {
+        try { return JsonNode.Parse(text); }
+        catch (JsonException) { return null; }
+    }
+
+    // Mirrors AgentReply / LabelSpec; enums come from the same lists the validator uses.
+    private static readonly JsonNode ResponseSchema = JsonNode.Parse($$"""
+    {
+      "type": "OBJECT",
+      "required": ["message", "status", "issues", "label"],
+      "properties": {
+        "message": { "type": "STRING" },
+        "status": { "type": "STRING", "enum": ["needs_info", "ready"] },
+        "issues": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "required": ["field", "kind", "detail"],
+            "properties": {
+              "field": { "type": "STRING" },
+              "kind": { "type": "STRING", "enum": ["missing", "conflict", "invalid"] },
+              "detail": { "type": "STRING" }
+            }
+          }
+        },
+        "label": {
+          "type": "OBJECT",
+          "properties": {
+            "productName": { "type": "STRING", "nullable": true },
+            "netVolume": { "type": "STRING", "nullable": true },
+            "packagingLevel": { "type": "STRING", "nullable": true, "enum": ["consumer_unit", "case", "pallet"] },
+            "symbology": { "type": "STRING", "nullable": true, "enum": {{JsonSerializer.Serialize(BarcodeTypes.Allowed.Order())}} },
+            "gtin": { "type": "STRING", "nullable": true },
+            "batch": { "type": "STRING", "nullable": true },
+            "bestBefore": { "type": "STRING", "nullable": true },
+            "allowPastDate": { "type": "BOOLEAN", "nullable": true },
+            "itemCount": { "type": "INTEGER", "nullable": true },
+            "sscc": { "type": "STRING", "nullable": true },
+            "url": { "type": "STRING", "nullable": true },
+            "widthMm": { "type": "NUMBER", "nullable": true },
+            "heightMm": { "type": "NUMBER", "nullable": true }
+          }
+        }
+      }
+    }
+    """)!;
 }

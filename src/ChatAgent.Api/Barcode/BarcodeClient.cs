@@ -9,7 +9,7 @@ public interface IBarcodeClient
     Task<BarcodeImage> GenerateAsync(BarcodeRequest request, CancellationToken ct);
 }
 
-public class BarcodeClient(HttpClient http, IConfiguration config) : IBarcodeClient
+public class BarcodeClient(HttpClient http, IConfiguration config, ILogger<BarcodeClient> log) : IBarcodeClient
 {
     private const string Endpoint = "https://barcode.tec-it.com/barcode.ashx";
 
@@ -38,12 +38,14 @@ public class BarcodeClient(HttpClient http, IConfiguration config) : IBarcodeCli
             bytes = await response.Content.ReadAsByteArrayAsync(ct);
             contentType = response.Content.Headers.ContentType?.MediaType ?? "";
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
+            log.LogWarning("Barcode API not reachable: {Reason}", ex.Message);
             throw new BarcodeException("Barcode API is not reachable.");
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested) // HttpClient timeout
         {
+            log.LogWarning("Barcode API timed out");
             throw new BarcodeException("Barcode API did not answer in time.");
         }
 
@@ -51,8 +53,11 @@ public class BarcodeClient(HttpClient http, IConfiguration config) : IBarcodeCli
         // rendered into the image, e.g. "Wrong check digit" or the rate-limit notice). A different
         // media type than requested therefore means the request failed.
         if (!MediaTypes.TryGetValue(request.Format, out var expected) || contentType != expected)
+        {
+            log.LogWarning("Barcode API returned {ContentType} instead of an image for {Code}: invalid data or rate limit", contentType, request.Code);
             throw new BarcodeException(
                 "Barcode API rejected the request (invalid data for this barcode type, unsupported option, or rate limit).");
+        }
 
         return new BarcodeImage(bytes, contentType);
     }

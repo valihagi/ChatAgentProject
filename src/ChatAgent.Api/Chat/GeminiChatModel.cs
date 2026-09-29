@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -8,7 +9,7 @@ using ChatAgent.Api.Barcode;
 
 namespace ChatAgent.Api.Chat;
 
-public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvider time) : IChatModel
+public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvider time, ILogger<GeminiChatModel> log) : IChatModel
 {
     private readonly string _model = config["Gemini:Model"] ?? "gemini-3.5-flash";
     private readonly string _apiKey = config["GEMINI_API_KEY"]
@@ -55,8 +56,11 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
             };
             request.Headers.Add("x-goog-api-key", _apiKey);
 
+            var started = Stopwatch.GetTimestamp();
             using var response = await SendAsync(request, ct);
             var json = ParseJson(await response.Content.ReadAsStringAsync(ct));
+            log.LogInformation("Gemini {Model} answered {Status} in {Elapsed:F0} ms",
+                _model, (int)response.StatusCode, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             if (response.IsSuccessStatusCode)
                 return json?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
@@ -64,6 +68,7 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
             if (response.StatusCode != HttpStatusCode.ServiceUnavailable || attempt >= MaxRetries)
                 throw new HttpRequestException($"Gemini returned {(int)response.StatusCode}: {json?["error"]?["message"]}");
 
+            log.LogWarning("Gemini overloaded (503), retrying");
             await Task.Delay(RetryDelay * (attempt + 1), ct);
         }
     }

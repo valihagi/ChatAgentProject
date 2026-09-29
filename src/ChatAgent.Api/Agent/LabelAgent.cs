@@ -12,7 +12,7 @@ public class AgentException(string message, Exception? inner = null) : Exception
 /// so it can phrase the question in the user's language. That second answer is never rendered: any
 /// value it "fixed" (e.g. a corrected check digit) was not confirmed by the user.
 /// </summary>
-public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider time)
+public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider time, ILogger<LabelAgent> log)
 {
     public async Task<ChatResponse> HandleAsync(ChatRequest request, CancellationToken ct)
     {
@@ -22,6 +22,7 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
         var raw = await CompleteAsync(history, ct);
         var reply = Parse(raw);
         reply = reply with { Label = LabelSpec.Merge(request.Label, reply.Label, reply.Cleared) };
+        log.LogInformation("Turn with {Messages} messages: model says {Status}, {Issues} issues", request.Messages.Count, reply.Status, reply.Issues.Count);
 
         if (reply.Status != "ready" || reply.Issues.Count > 0)
             return new(reply.Message, "needs_info", reply.Label, null);
@@ -29,11 +30,16 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
         var result = LabelValidator.Validate(reply.Label, today);
         if (result.Ok) return await RenderAsync(reply, result, ct);
 
+        // Fields only, never values: the log must not contain user input.
+        log.LogWarning("Validation rejected a 'ready' label: {Findings}", string.Join(", ", result.Issues.Select(i => $"{i.Field}:{i.Kind}")));
+
         // Keep the label exactly as the user gave it, whatever the second answer contains.
         var retry = Parse(await CompleteAsync([.. history, new("agent", raw), new("user", FeedbackFor(result.Issues))], ct));
+        log.LogInformation("Feedback round: model answered {Status}", retry.Status);
         if (retry.Status == "needs_info")
             return new(retry.Message, "needs_info", reply.Label, null);
 
+        log.LogWarning("Model still claimed 'ready' after feedback; showing validator findings instead");
         var text = "The label cannot be created yet:\n" + string.Join("\n", result.Issues.Select(i => $"• {i.Detail}"));
         return new(text, "needs_info", reply.Label, null);
     }
@@ -45,15 +51,15 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
             var image = await barcodes.GenerateAsync(validated.Request!, ct);
             var dataUrl = $"data:{image.ContentType};base64,{Convert.ToBase64String(image.Content)}";
 
-            // Be transparent when we derived a value the user did not type.
-            var message = reply.Message;
-            if (validated.Label.Gtin != reply.Label.Gtin)
-                message += $"\n\nGTIN completed with check digit: {validated.Label.Gtin}";
+            log.LogInformation("Rendered {Symbology} label ({Bytes} bytes)", validated.Request!.Code, image.Content.Length);
 
-            return new(message, "ready", validated.Label, dataUrl);
+            // Be transparent when we derived a value the user did not type.
+            var notices = validated.Label.Gtin != reply.Label.Gtin ? new[] { Notice.GtinCompleted } : [];
+            return new(reply.Message, "ready", validated.Label, dataUrl, Notices: notices);
         }
         catch (BarcodeException ex)
         {
+            log.LogWarning("Barcode rendering failed: {Reason}", ex.Message);
             throw new AgentException($"The barcode service could not create the label. {ex.Message}", ex);
         }
     }
@@ -61,7 +67,11 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
     private async Task<string> CompleteAsync(IReadOnlyList<ChatMessage> history, CancellationToken ct)
     {
         try { return await model.CompleteAsync(history, ct); }
-        catch (HttpRequestException ex) { throw new AgentException($"The language model is unavailable. {ex.Message}", ex); }
+        catch (HttpRequestException ex)
+        {
+            log.LogWarning("Language model call failed: {Reason}", ex.Message);
+            throw new AgentException($"The language model is unavailable. {ex.Message}", ex);
+        }
     }
 
     private static AgentReply Parse(string raw)

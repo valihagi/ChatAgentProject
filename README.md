@@ -127,6 +127,7 @@ Browser (wwwroot) -- POST /api/chat {messages, label} --> LabelAgent
   - Net volume is required on consumer-unit labels (optional on case and pallet labels), must be a number with `ml`, `cl` or `l`, and is normalized (`0.75L` becomes `0.75 l`). Numerals such as `1.000 ml` are rejected as ambiguous instead of guessed.
   - Alcohol content (`alcoholPercent`, % vol) has at most one decimal place and lies between 0 and 100. The model sets `alcoholic` (beer, wine, spirits: true; juice, water: false). Alcoholic products must state the value (the EU requires it above 1.2 % vol), and a non-alcoholic product with more than 1.2 % vol is reported as a contradiction.
   - Both are printed on the label card, with the decimal separator of the UI language.
+- **Print label** prints the label card only. **Download label (PNG)** saves the complete label (product text, barcode at its true size, facts) as one 300 DPI PNG, drawn in the browser on a canvas with a resolution header so image viewers print it at the right physical size. **Barcode only** saves the raw image from the TEC-IT API.
 - The system prompt is in `src/ChatAgent.Api/Prompts/system-prompt.md`; the supported barcode types are in `Barcode/BarcodeTypes.cs`.
 
 ## Logging

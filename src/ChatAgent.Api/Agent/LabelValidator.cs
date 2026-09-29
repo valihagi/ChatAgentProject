@@ -88,7 +88,7 @@ public static partial class LabelValidator
 
         var request = new BarcodeRequest(symbology, data) { Dpi = Dpi };
         if (s.WidthMm is { } w && s.HeightMm is { } h)
-            request = request with { Unit = "mm", Width = w, Height = h };
+            request = request with { Unit = "fit", Width = w, Height = h }; // fit scales the symbol into the mm box; unit=mm would crop it
         return new(issues, request);
     }
 

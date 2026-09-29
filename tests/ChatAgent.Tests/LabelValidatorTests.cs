@@ -175,10 +175,10 @@ public class LabelValidatorTests
     }
 
     [Fact]
-    public void Explicit_size_switches_to_millimetres_and_needs_both_values()
+    public void Explicit_size_uses_fit_unit_so_the_symbol_is_scaled_not_cropped()
     {
         var sized = Check(Bottle(s => s with { WidthMm = 40, HeightMm = 20 })).Request!;
-        Assert.Equal(("mm", 40, 20), (sized.Unit, sized.Width, sized.Height));
+        Assert.Equal(("fit", 40, 20), (sized.Unit, sized.Width, sized.Height));
 
         AssertIssue(Check(Bottle(s => s with { WidthMm = 40 })), "heightMm", "missing");
     }

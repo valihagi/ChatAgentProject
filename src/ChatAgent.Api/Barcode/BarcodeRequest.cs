@@ -7,7 +7,7 @@ public record BarcodeRequest(string Code, string Data)
 {
     public string Format { get; init; } = "png";   // png | jpg | gif (svg is subscriber-only)
     public int? Dpi { get; init; }                 // 72..300 for non-subscribers
-    public string? Unit { get; init; }             // mm | mils | px | fit | min
+    public string? Unit { get; init; }             // fit (default: width/height in mm, symbol is scaled into the box) | mm (crops!) | mils | px | min
     public double? ModuleWidth { get; init; }
     public double? Width { get; init; }
     public double? Height { get; init; }

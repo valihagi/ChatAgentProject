@@ -93,7 +93,7 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
     private static readonly JsonNode ResponseSchema = JsonNode.Parse($$"""
     {
       "type": "OBJECT",
-      "required": ["message", "status", "issues", "label"],
+      "required": ["message", "status", "issues", "label", "cleared"],
       "properties": {
         "message": { "type": "STRING" },
         "status": { "type": "STRING", "enum": ["needs_info", "ready"] },
@@ -112,20 +112,21 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
         "cleared": { "type": "ARRAY", "items": { "type": "STRING", "enum": {{JsonSerializer.Serialize(LabelSpec.FieldNames)}} } },
         "label": {
           "type": "OBJECT",
+          "required": {{JsonSerializer.Serialize(LabelSpec.FieldNames)}},
           "properties": {
-            "productName": { "type": "STRING", "nullable": true },
-            "netVolume": { "type": "STRING", "nullable": true },
-            "packagingLevel": { "type": "STRING", "nullable": true, "enum": ["consumer_unit", "case", "pallet"] },
-            "symbology": { "type": "STRING", "nullable": true, "enum": {{JsonSerializer.Serialize(BarcodeTypes.Allowed.Order())}} },
-            "gtin": { "type": "STRING", "nullable": true },
-            "batch": { "type": "STRING", "nullable": true },
-            "bestBefore": { "type": "STRING", "nullable": true },
-            "allowPastDate": { "type": "BOOLEAN", "nullable": true },
-            "itemCount": { "type": "INTEGER", "nullable": true },
-            "sscc": { "type": "STRING", "nullable": true },
-            "url": { "type": "STRING", "nullable": true },
-            "widthMm": { "type": "NUMBER", "nullable": true },
-            "heightMm": { "type": "NUMBER", "nullable": true }
+            "productName": { "type": "STRING", "nullable": true, "description": "Product name as given by the user" },
+            "netVolume": { "type": "STRING", "nullable": true, "description": "Printed volume text, e.g. 0,75 l" },
+            "packagingLevel": { "type": "STRING", "nullable": true, "enum": ["consumer_unit", "case", "pallet"], "description": "bottle/can = consumer_unit, carton/crate/tray = case" },
+            "symbology": { "type": "STRING", "nullable": true, "enum": {{JsonSerializer.Serialize(BarcodeTypes.Allowed.Order())}}, "description": "Barcode type the user named, else the default for the packaging level" },
+            "gtin": { "type": "STRING", "nullable": true, "description": "Digits of the GTIN/EAN the user gave; fill it whenever a number is present, even if a question is open" },
+            "batch": { "type": "STRING", "nullable": true, "description": "Batch or lot (Charge)" },
+            "bestBefore": { "type": "STRING", "nullable": true, "description": "Best-before date (MHD) as YYYY-MM-DD; fill it even if it is in the past" },
+            "allowPastDate": { "type": "BOOLEAN", "nullable": true, "description": "true only if the user confirmed a past date is intended" },
+            "itemCount": { "type": "INTEGER", "nullable": true, "description": "Items per case" },
+            "sscc": { "type": "STRING", "nullable": true, "description": "18-digit SSCC for pallets" },
+            "url": { "type": "STRING", "nullable": true, "description": "https URL for plain QR/DataMatrix only" },
+            "widthMm": { "type": "NUMBER", "nullable": true, "description": "Label width in mm, only if the user stated a size" },
+            "heightMm": { "type": "NUMBER", "nullable": true, "description": "Label height in mm, only if the user stated a size" }
           }
         }
       }

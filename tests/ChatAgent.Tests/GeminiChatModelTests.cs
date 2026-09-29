@@ -94,6 +94,10 @@ public class GeminiChatModelTests
         Assert.Equal("OBJECT", config["responseSchema"]!["type"]!.GetValue<string>());
         var symbologies = config["responseSchema"]!["properties"]!["label"]!["properties"]!["symbology"]!["enum"]!.AsArray();
         Assert.Contains("GS1-128", symbologies.Select(n => n!.GetValue<string>()));
+
+        // Every label key is required (nullable): without that, schema mode lets the model omit fields it was given.
+        var required = config["responseSchema"]!["properties"]!["label"]!["required"]!.AsArray().Select(n => n!.GetValue<string>()).ToList();
+        Assert.Equal(ChatAgent.Api.Agent.LabelSpec.FieldNames.Order(), required.Order());
     }
 
     [Fact]

@@ -4,12 +4,7 @@ using ChatAgent.Api.Chat;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// "Mock" (default) keeps development offline; set Chat:Provider=Gemini to use the real LLM.
-if (builder.Configuration["Chat:Provider"] == "Gemini")
-    builder.Services.AddHttpClient<IChatModel, GeminiChatModel>();
-else
-    builder.Services.AddSingleton<IChatModel, MockChatModel>();
-
+builder.Services.AddChatModel(builder.Configuration); // Mock unless Chat:Provider=Gemini
 builder.Services.AddHttpClient<IBarcodeClient, BarcodeClient>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<LabelAgent>();

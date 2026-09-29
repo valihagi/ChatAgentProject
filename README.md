@@ -32,6 +32,7 @@ src/ChatAgent.Api
   wwwroot/               index.html, app.js (chat UI), i18n.js (EN/DE), label-image.js (label PNG), style.css
 tests/ChatAgent.Tests    unit and HTTP endpoint tests
 docs/Dokumentation_Label_Chat_Agent.pdf   German documentation (scope, decisions, screenshots, chats, limitations, time)
+docs/session-log         scrubbed Claude Code session log: PDF (long outputs shortened) and complete Markdown
 docs/dokumentation.html  source of the PDF; docs/screenshots and docs/samples hold its images and live transcripts
 ```
 
@@ -246,4 +247,4 @@ The task asks for "konforme" labels and provides no rule packs, so the scope was
 - The conversation is not persisted (reloading starts a new chat); there is no authentication or HTTPS; the app is meant to run locally.
 
 ## Development process
-Built with Claude Code (Claude Sonnet 5.5) in a single session; the exported session log accompanies the submission and keeps the failed attempts (for example the invalid first API probe, the retired Gemini model name, the cropping `unit=mm`, and the schema that dropped fields). The system prompt is part of the repository (`src/ChatAgent.Api/Prompts/system-prompt.md`). The git history documents the steps in small commits.
+Built with Claude Code (Claude Sonnet 5.5) in a single session; the scrubbed session log is in `docs/session-log/` and keeps the failed attempts (for example the invalid first API probe, the retired Gemini model name, the cropping `unit=mm`, and the schema that dropped fields). The system prompt is part of the repository (`src/ChatAgent.Api/Prompts/system-prompt.md`). The git history documents the steps in small commits.

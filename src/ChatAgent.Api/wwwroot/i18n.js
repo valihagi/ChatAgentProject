@@ -9,6 +9,7 @@ const TEXTS = {
     greeting:
       'Hi! Describe the product and packaging you need a label for, e.g. ' +
       '"0.5 l apple juice bottle, GTIN 4006381333931". I will ask for anything that is missing.',
+    abv: 'alc. {abv} % vol',
     printLabel: 'Print label',
     downloadPng: 'Download PNG',
     barcodeAlt: 'Barcode',
@@ -36,6 +37,7 @@ const TEXTS = {
     greeting:
       'Hallo! Beschreibe das Produkt und die Verpackung, für die du ein Etikett brauchst, z. B. ' +
       '"0,5 l Apfelsaft Flasche, GTIN 4006381333931". Ich frage nach, was noch fehlt.',
+    abv: 'Alkohol {abv} % vol',
     printLabel: 'Etikett drucken',
     downloadPng: 'PNG herunterladen',
     barcodeAlt: 'Barcode',
@@ -70,12 +72,21 @@ function initialLanguage() {
 /** Translates a key; `{name}` placeholders are filled from `args`. Unknown keys are shown as-is. */
 function t(key, args = {}) {
   const text = TEXTS[language][key] ?? TEXTS.en[key] ?? key;
-  return text.replace(/\{(\w+)\}/g, (_, name) => args[name] ?? '');
+  return text.replace(/\{(\w+)\}/g, (_, name) => {
+    const value = args[name];
+    // Alcohol content: one decimal, separator of the UI language (12,5 in German, 12.5 in English).
+    if (name === 'abv' && typeof value === 'number') {
+      return value.toLocaleString(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    }
+    return value ?? '';
+  });
 }
 
 /** Re-translates everything marked with data-i18n (text), data-i18n-placeholder, data-i18n-alt; args in data-i18n-args (JSON). */
 function applyLanguage(root = document) {
   document.documentElement.lang = language;
+  const select = document.getElementById('language');
+  if (select) select.value = language; // keep the selector in sync however the language was set
   const args = (node) => JSON.parse(node.dataset.i18nArgs || '{}');
   root.querySelectorAll('[data-i18n]').forEach((node) => (node.textContent = t(node.dataset.i18n, args(node))));
   root.querySelectorAll('[data-i18n-placeholder]').forEach((node) => (node.placeholder = t(node.dataset.i18nPlaceholder)));

@@ -64,6 +64,7 @@ function buildLabel(spec, imageUrl, dpi) {
   const card = el('div', 'label');
   card.append(el('h3', '', spec.productName || 'Label'));
   if (spec.netVolume) card.append(el('p', 'volume', spec.netVolume));
+  if (spec.alcoholPercent != null) card.append(tr('p', 'volume', 'abv', { abv: spec.alcoholPercent }));
 
   const img = el('img');
   img.dataset.i18nAlt = 'barcodeAlt';

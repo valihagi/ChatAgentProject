@@ -21,14 +21,13 @@ public class BarcodeRequestTests
     {
         var form = new BarcodeRequest("EAN13", "4006381333931")
         {
-            Dpi = 300, Unit = "mm", Width = 37.5, ShowHrt = false, QuietZone = 2.5,
+            Dpi = 300, Unit = "fit", Width = 37.5, ModuleWidth = 0.33,
         }.ToForm();
 
         Assert.Equal("300", form["dpi"]);
-        Assert.Equal("mm", form["unit"]);
+        Assert.Equal("fit", form["unit"]);
         Assert.Equal("37.5", form["width"]);
-        Assert.Equal("0", form["showhrt"]);
-        Assert.Equal("2.5", form["quiet"]);
+        Assert.Equal("0.33", form["modulewidth"]);
     }
 
     [Theory]

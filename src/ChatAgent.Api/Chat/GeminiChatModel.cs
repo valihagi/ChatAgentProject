@@ -17,6 +17,7 @@ public class GeminiChatModel(HttpClient http, IConfiguration config) : IChatMode
         var body = new
         {
             systemInstruction = new { parts = new[] { new { text = _systemPrompt } } },
+            generationConfig = new { responseMimeType = "application/json" },
             contents = history.Select(m => new
             {
                 role = m.Role == "user" ? "user" : "model",

@@ -1,10 +1,15 @@
+using ChatAgent.Api.Agent;
+
 namespace ChatAgent.Api.Chat;
 
 public record ChatMessage(string Role, string Text);
 
-public record ChatRequest(List<ChatMessage> Messages);
+/// <summary>The server is stateless: the browser sends the conversation plus the last known label spec.</summary>
+public record ChatRequest(List<ChatMessage> Messages, LabelSpec? Label = null);
 
-public record ChatResponse(string Reply);
+/// <param name="Status">"needs_info" or "ready"</param>
+/// <param name="Image">Data URL of the generated label barcode, only when ready.</param>
+public record ChatResponse(string Reply, string Status, LabelSpec Label, string? Image);
 
 public interface IChatModel
 {

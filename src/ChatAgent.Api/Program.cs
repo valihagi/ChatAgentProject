@@ -1,3 +1,4 @@
+using ChatAgent.Api.Agent;
 using ChatAgent.Api.Barcode;
 using ChatAgent.Api.Chat;
 
@@ -10,19 +11,27 @@ else
     builder.Services.AddSingleton<IChatModel, MockChatModel>();
 
 builder.Services.AddHttpClient<IBarcodeClient, BarcodeClient>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<LabelAgent>();
 
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapPost("/api/chat", async (ChatRequest request, IChatModel model, CancellationToken ct) =>
+app.MapPost("/api/chat", async (ChatRequest request, LabelAgent agent, CancellationToken ct) =>
 {
-    if (request.Messages is not { Count: > 0 })
-        return Results.BadRequest(new { error = "messages must not be empty." });
+    if (request.Messages is not { Count: > 0 } || request.Messages[^1].Role != "user")
+        return Results.BadRequest(new { error = "The last message must come from the user." });
 
-    var reply = await model.CompleteAsync(request.Messages, ct);
-    return Results.Ok(new ChatResponse(reply));
+    try
+    {
+        return Results.Ok(await agent.HandleAsync(request, ct));
+    }
+    catch (AgentException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status502BadGateway);
+    }
 });
 
 app.Run();

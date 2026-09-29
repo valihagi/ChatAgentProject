@@ -25,6 +25,7 @@ public class GeminiChatModelTests
         Assert.Equal("k", handler.Request!.Headers.GetValues("x-goog-api-key").Single());
         var body = JsonNode.Parse(handler.RequestBody!)!;
         Assert.Contains("label assistant", body["systemInstruction"]!["parts"]![0]!["text"]!.GetValue<string>());
+        Assert.Equal("application/json", body["generationConfig"]!["responseMimeType"]!.GetValue<string>());
         Assert.Equal(["user", "model", "user"], body["contents"]!.AsArray().Select(c => c!["role"]!.GetValue<string>()));
     }
 }

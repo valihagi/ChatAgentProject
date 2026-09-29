@@ -39,6 +39,19 @@ public class LabelValidatorTests
         Assert.Equal(300, r.Request.Dpi);
     }
 
+    [Theory]
+    [InlineData("EAN13", "4006381333931", 0.33)]
+    [InlineData("GS1-128", "4006381333931", 0.25)]
+    [InlineData("GS1DigitalLink_QRCode", "4006381333931", 0.5)]
+    [InlineData("GS1DataMatrix", "4006381333931", 0.5)]
+    public void Without_explicit_size_a_module_width_in_mm_fixes_the_physical_size(string symbology, string gtin, double expected)
+    {
+        var r = Check(Bottle(s => s with { Symbology = symbology, Gtin = gtin }));
+
+        Assert.Equal(("mm", expected), (r.Request!.Unit, r.Request.ModuleWidth));
+        Assert.Null(r.Request.Width);
+    }
+
     [Fact]
     public void Ean13_accepts_12_digits_because_the_api_adds_the_check_digit() =>
         Assert.True(Check(Bottle(s => s with { Gtin = Gtin13[..12] })).Ok);
@@ -179,6 +192,7 @@ public class LabelValidatorTests
     {
         var sized = Check(Bottle(s => s with { WidthMm = 40, HeightMm = 20 })).Request!;
         Assert.Equal(("fit", 40, 20), (sized.Unit, sized.Width, sized.Height));
+        Assert.Null(sized.ModuleWidth);
 
         AssertIssue(Check(Bottle(s => s with { WidthMm = 40 })), "heightMm", "missing");
     }

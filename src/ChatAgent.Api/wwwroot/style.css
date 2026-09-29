@@ -49,7 +49,7 @@ header {
   .chat { display: none; }
   #print-area { display: block; }
   #print-area .label { border: 1px solid #000; border-radius: 0; break-inside: avoid; display: inline-block; }
-  #print-area .label img { max-width: none; }
+  #print-area .label img { max-width: 100%; } /* never clip a wide barcode at the page edge */
 }
 
 .composer { display: flex; gap: .5rem; padding: .8rem 1rem; border-top: 1px solid var(--border); }

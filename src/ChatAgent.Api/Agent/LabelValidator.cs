@@ -87,10 +87,23 @@ public static partial class LabelValidator
         if (issues.Count > 0 || symbology is null || data is null) return new(issues, null);
 
         var request = new BarcodeRequest(symbology, data) { Dpi = Dpi };
-        if (s.WidthMm is { } w && s.HeightMm is { } h)
-            request = request with { Unit = "fit", Width = w, Height = h }; // fit scales the symbol into the mm box; unit=mm would crop it
+        request = s.WidthMm is { } w && s.HeightMm is { } h
+            ? request with { Unit = "fit", Width = w, Height = h }                // scales the symbol into the box (unit=mm would crop it)
+            : request with { Unit = "mm", ModuleWidth = ModuleWidthMm(symbology) }; // deterministic physical size
         return new(issues, request);
     }
+
+    /// <summary>
+    /// Bar/module width in mm when the user gave no size. Measured with the API at 300 DPI: EAN-13 at 0.33 mm is
+    /// 37.3 mm wide (GS1 nominal 37.29 mm); without this the API picks a much larger scale (a long GS1-128 was 240 mm).
+    /// </summary>
+    public static double ModuleWidthMm(string symbology) => symbology switch
+    {
+        _ when Linear.ContainsKey(symbology) && !symbology.Equals("EAN14", StringComparison.OrdinalIgnoreCase) => 0.33, // EAN-13/8, UPC-A nominal
+        _ when symbology.Contains("QR", StringComparison.OrdinalIgnoreCase)
+            || symbology.Contains("DataMatrix", StringComparison.OrdinalIgnoreCase) => 0.5, // 2D
+        _ => 0.25, // GS1-128, EAN-14, Code 128/39: GS1 minimum X-dimension, keeps long strings printable
+    };
 
     private static string? BuildData(string symbology, LabelSpec s, string? yymmdd, bool hasAttributes,
         Action<string, string, string> add)

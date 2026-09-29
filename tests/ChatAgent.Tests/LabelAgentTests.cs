@@ -83,6 +83,25 @@ public class LabelAgentTests
         Assert.Equal(2, model.Calls.Count);
         Assert.StartsWith("[backend validation]", model.Calls[1][^1].Text);
         Assert.Empty(barcodes.Requests);
+        Assert.Equal("4006381333932", response.Label.Gtin); // state keeps what the user gave
+    }
+
+    [Fact]
+    public async Task Value_silently_corrected_on_the_feedback_round_is_never_rendered()
+    {
+        // The model "helpfully" swaps in the expected check digit and calls the label ready again.
+        var wrong = GoodLabel with { Gtin = "4006381333932" };
+        var model = new ScriptedModel(
+            new AgentReply { Message = "Done", Status = "ready", Label = wrong },
+            new AgentReply { Message = "Fixed it for you.", Status = "ready", Label = GoodLabel });
+        var barcodes = new FakeBarcodes();
+
+        var response = await Agent(model, barcodes).HandleAsync(Say("go"), default);
+
+        Assert.Equal(("needs_info", null), (response.Status, response.Image));
+        Assert.Empty(barcodes.Requests);
+        Assert.Equal("4006381333932", response.Label.Gtin);
+        Assert.Contains("wrong check digit", response.Reply);
     }
 
     [Fact]

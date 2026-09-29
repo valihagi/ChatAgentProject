@@ -7,38 +7,33 @@ namespace ChatAgent.Api.Agent;
 public class AgentException(string message, Exception? inner = null) : Exception(message, inner);
 
 /// <summary>
-/// One chat turn: LLM extracts/asks -> backend validates -> barcode API renders. If the LLM declares
-/// the label ready but validation disagrees, the findings go back to the LLM once so it can phrase the
-/// question in the user's language.
+/// One chat turn: LLM extracts/asks -> backend validates -> barcode API renders.
+/// If the LLM declares the label ready but validation disagrees, the findings go back to the LLM once
+/// so it can phrase the question in the user's language. That second answer is never rendered: any
+/// value it "fixed" (e.g. a corrected check digit) was not confirmed by the user.
 /// </summary>
 public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider time)
 {
-    private const int MaxAttempts = 2;
-
     public async Task<ChatResponse> HandleAsync(ChatRequest request, CancellationToken ct)
     {
         var history = WithState(request);
         var today = DateOnly.FromDateTime(time.GetLocalNow().DateTime);
-        var issues = new List<AgentIssue>();
-        AgentReply reply = new();
 
-        for (var attempt = 0; attempt < MaxAttempts; attempt++)
-        {
-            var raw = await CompleteAsync(history, ct);
-            reply = Parse(raw);
+        var raw = await CompleteAsync(history, ct);
+        var reply = Parse(raw);
 
-            if (reply.Status != "ready" || reply.Issues.Count > 0)
-                return new(reply.Message, "needs_info", reply.Label, null);
+        if (reply.Status != "ready" || reply.Issues.Count > 0)
+            return new(reply.Message, "needs_info", reply.Label, null);
 
-            var result = LabelValidator.Validate(reply.Label, today);
-            if (result.Ok) return await RenderAsync(reply, result.Request!, ct);
+        var result = LabelValidator.Validate(reply.Label, today);
+        if (result.Ok) return await RenderAsync(reply, result.Request!, ct);
 
-            issues = result.Issues;
-            history = [.. history, new("agent", raw), new("user", FeedbackFor(issues))];
-        }
+        // Keep the label exactly as the user gave it, whatever the second answer contains.
+        var retry = Parse(await CompleteAsync([.. history, new("agent", raw), new("user", FeedbackFor(result.Issues))], ct));
+        if (retry.Status == "needs_info")
+            return new(retry.Message, "needs_info", reply.Label, null);
 
-        // The LLM insisted the label was ready; show the validator's findings directly.
-        var text = "The label cannot be created yet:\n" + string.Join("\n", issues.Select(i => $"• {i.Detail}"));
+        var text = "The label cannot be created yet:\n" + string.Join("\n", result.Issues.Select(i => $"• {i.Detail}"));
         return new(text, "needs_info", reply.Label, null);
     }
 

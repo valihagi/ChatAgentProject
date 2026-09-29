@@ -5,7 +5,7 @@ Chat agent that turns natural-language product/packaging info into print-ready b
 ## Stack
 - Backend: ASP.NET Core (.NET 10) minimal API, `src/ChatAgent.Api`
 - Frontend: plain HTML/CSS/JS in `src/ChatAgent.Api/wwwroot` (served by the API, no build step)
-- LLM: Google Gemini `gemini-3.8-flash` (free tier), behind the `IChatModel` interface; a mock is the default
+- LLM: Google Gemini `gemini-3.5-flash` (free tier), behind the `IChatModel` interface; a mock is the default
 
 ## Run
 ```bash
@@ -26,7 +26,12 @@ Secrets come from environment variables only and are never committed.
 - Requests are sent as POST so the access id never appears in a URL.
 - Errors are returned as HTTP 200 with an `image/gif` error bitmap (`onerror=500` is not honoured), so the client treats any media type different from the requested one as a failure.
 - This access id behaves like a non-subscriber: max 300 DPI, no SVG, per-IP rate limit.
+- Sizing: `unit=fit` with `width`/`height` in mm scales the whole symbol into the box; `unit=mm` *crops* it at the canvas edge, so it must not be used for fixed label sizes. A box that is too small for the data yields a scaled-down, possibly unscannable symbol (no warning from the API).
 - The API does not validate GS1 check digits (a wrong GTIN check digit in GS1-128 still renders), so the backend must validate them.
+
+## Gemini notes (observed)
+- Free-tier models are intermittently overloaded (503). The client retries 503/429 twice; newer models (`gemini-3.7/3.8-flash`) were overloaded for long stretches, `gemini-3.5-flash` was reliable and is the default. Override with `Gemini__Model`.
+- Live scenarios run against the real API: vague German input -> follow-up question; contradictory pallet/EAN13/past-date input -> all conflicts named; complete case label -> GS1-128 rendered; wrong check digit -> corrected digit suggested; follow-up edit to a Digital Link QR code keeps earlier fields.
 
 ## Tests
 ```bash
@@ -44,4 +49,4 @@ Browser (wwwroot) -- POST /api/chat {messages, label} --> LabelAgent
 The LLM extracts facts and asks questions; deterministic code validates and builds barcode data. If the LLM says "ready" but validation fails, the findings go back to the LLM once; otherwise the validator's message is shown.
 
 ## Status
-Working: multi-turn chat, missing/conflict detection, label image in chat, mock and Gemini providers, 38 unit tests. Not yet: prompt tuning against real Gemini conversations, printable label layout, submission documentation.
+Working: multi-turn chat, missing/conflict detection, label image in chat, mock and Gemini providers, 40 unit tests, printable label (Print button, true-size barcode). Not yet: scannability warning for undersized labels, endpoint tests, submission documentation.

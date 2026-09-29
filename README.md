@@ -16,7 +16,12 @@ dotnet run --project src/ChatAgent.Api      # http://localhost:5080
 ```
 
 ## Configuration
-Secrets come from environment variables only and are never committed.
+Secrets are never committed. Provide them as environment variables, or (Development) with user-secrets:
+```bash
+dotnet user-secrets set TECIT_ACCESS_ID "<id>" --project src/ChatAgent.Api
+dotnet user-secrets set GEMINI_API_KEY "<key>" --project src/ChatAgent.Api   # only needed with Chat__Provider=Gemini
+```
+The app refuses to start if `TECIT_ACCESS_ID` (always) or `GEMINI_API_KEY` (Gemini provider) is missing. Note that `dotnet run` applies the launch profile (Development), which is what loads user-secrets.
 
 | Variable / setting | Purpose |
 |---|---|
@@ -34,7 +39,8 @@ Secrets come from environment variables only and are never committed.
 - The API does not validate GS1 check digits (a wrong GTIN check digit in GS1-128 still renders), so the backend must validate them.
 
 ## Gemini notes (observed)
-- Free-tier models are intermittently overloaded (503). The client retries 503/429 twice; newer models (`gemini-3.7/3.8-flash`) were overloaded for long stretches, `gemini-3.5-flash` was reliable and is the default. Override with `Gemini__Model`.
+- The free tier allows only about **20 requests per model per day** (`generate_content_free_tier_requests`), and each model has its own quota. A chat turn costs 1 request (2 if validation feedback is needed); retried 503s probably count too. Plan live tests accordingly and use the mock otherwise. A 429 is not retried.
+- Free-tier models are intermittently overloaded (503). The client retries a 503 once; newer models (`gemini-3.7/3.8-flash`) were overloaded for long stretches, `gemini-3.5-flash` was reliable and is the default. Override with `Gemini__Model`.
 - Live scenarios run against the real API: vague German input -> follow-up question; contradictory pallet/EAN13/past-date input -> all conflicts named; complete case label -> GS1-128 rendered; wrong check digit -> corrected digit suggested; follow-up edit to a Digital Link QR code keeps earlier fields.
 
 ## Tests
@@ -50,7 +56,7 @@ Browser (wwwroot) -- POST /api/chat {messages, label} --> LabelAgent
             -> LabelValidator (check digits, symbology fit, dates; builds barcode data)
             -> BarcodeClient (TEC-IT API) -> PNG as data URL
 ```
-The LLM extracts facts and asks questions; deterministic code validates and builds barcode data. If the LLM says "ready" but validation fails, the findings go back to the LLM once; otherwise the validator's message is shown.
+Its `label` is treated as a patch onto the previous state (weaker models sometimes drop known fields); fields are only removed via an explicit `cleared` list. The LLM extracts facts and asks questions; deterministic code validates and builds barcode data. If the LLM says "ready" but validation fails, the findings go back to the LLM once; otherwise the validator's message is shown.
 
 ## Status
-Working: multi-turn chat, missing/conflict detection, label image in chat, mock and Gemini providers, 51 unit tests, printable label (Print button, true-size barcode). Not yet: scannability warning for undersized labels, endpoint tests, submission documentation.
+Working: multi-turn chat, missing/conflict detection, label image in chat, mock and Gemini providers, 95 tests (unit + HTTP endpoint tests, none touch the network), printable label (Print button, true-size barcode). Not yet: scannability warning for undersized labels, submission documentation. Live-verified with Gemini: response schema, check-digit completion. Not yet verified live: relative dates and the past-date confirmation flow (quota exhausted).

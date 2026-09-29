@@ -1,3 +1,4 @@
+using ChatAgent.Api.Barcode;
 using ChatAgent.Api.Chat;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,6 +8,8 @@ if (builder.Configuration["Chat:Provider"] == "Gemini")
     builder.Services.AddHttpClient<IChatModel, GeminiChatModel>();
 else
     builder.Services.AddSingleton<IChatModel, MockChatModel>();
+
+builder.Services.AddHttpClient<IBarcodeClient, BarcodeClient>();
 
 var app = builder.Build();
 

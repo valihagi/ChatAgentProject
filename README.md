@@ -34,5 +34,14 @@ dotnet test
 ```
 No test touches the network or the Gemini quota (fake HTTP handlers).
 
+## Architecture
+```
+Browser (wwwroot) -- POST /api/chat {messages, label} --> LabelAgent
+   LabelAgent: IChatModel (Gemini | Mock) -> JSON {message, status, issues, label}
+            -> LabelValidator (check digits, symbology fit, dates; builds barcode data)
+            -> BarcodeClient (TEC-IT API) -> PNG as data URL
+```
+The LLM extracts facts and asks questions; deterministic code validates and builds barcode data. If the LLM says "ready" but validation fails, the findings go back to the LLM once; otherwise the validator's message is shown.
+
 ## Status
-Chat UI, `POST /api/chat`, Barcode API client and a draft system prompt (`src/ChatAgent.Api/Prompts/system-prompt.md`) are in place. Parsing the agent's JSON, validation rules and showing the label in the chat are next.
+Working: multi-turn chat, missing/conflict detection, label image in chat, mock and Gemini providers, 38 unit tests. Not yet: prompt tuning against real Gemini conversations, printable label layout, submission documentation.

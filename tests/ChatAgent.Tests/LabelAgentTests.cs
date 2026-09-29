@@ -28,11 +28,25 @@ public class LabelAgentTests
         public List<BarcodeRequest> Requests { get; } = [];
         public bool Fail { get; init; }
 
+        /// <summary>Width the API would report for the symbol at minimum bar width (answer to Unit=mm requests).</summary>
+        public double NaturalWidthMm { get; init; } = 40;
+
         public Task<BarcodeImage> GenerateAsync(BarcodeRequest request, CancellationToken ct)
         {
             Requests.Add(request);
-            return Fail ? throw new BarcodeException("nope") : Task.FromResult(new BarcodeImage([1, 2], "image/png"));
+            if (Fail) throw new BarcodeException("nope");
+            return Task.FromResult(request.Unit == "mm"
+                ? new BarcodeImage(PngWithWidth((int)Math.Round(NaturalWidthMm / 25.4 * 300)), "image/png")
+                : new BarcodeImage([1, 2], "image/png"));
         }
+    }
+
+    private static byte[] PngWithWidth(int px)
+    {
+        var bytes = new byte[33];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52 }.CopyTo(bytes, 0);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(16), (uint)px);
+        return bytes;
     }
 
     private static readonly LabelSpec GoodLabel = new()
@@ -76,7 +90,7 @@ public class LabelAgentTests
         var response = await Agent(model, barcodes).HandleAsync(Say("go"), default);
 
         Assert.Equal("ready", response.Status);
-        Assert.Equal("data:image/png;base64,AQI=", response.Image);
+        Assert.StartsWith("data:image/png;base64,", response.Image);
         Assert.Equal("4006381333931", barcodes.Requests.Single().Data);
     }
 
@@ -254,4 +268,87 @@ public class LabelAgentTests
     {
         public Task<string> CompleteAsync(IReadOnlyList<ChatMessage> history, CancellationToken ct) => Task.FromResult(raw);
     }
+
+    // ---- size feasibility ----
+
+    private static readonly LabelSpec CaseLabel = new()
+    {
+        ProductName = "Apfelsaft", PackagingLevel = "case", Symbology = "GS1-128", Gtin = "14006381333938", Batch = "LOT42",
+    };
+
+    [Fact]
+    public async Task No_explicit_size_needs_no_probe()
+    {
+        var barcodes = new FakeBarcodes();
+        var model = new ScriptedModel(new AgentReply { Message = "Done", Status = "ready", Label = CaseLabel });
+
+        await Agent(model, barcodes).HandleAsync(Say("go"), default);
+
+        Assert.Single(barcodes.Requests);
+    }
+
+    [Fact]
+    public async Task Size_that_fits_is_probed_once_and_then_rendered()
+    {
+        var barcodes = new FakeBarcodes { NaturalWidthMm = 40 };
+        var sized = CaseLabel with { WidthMm = 60, HeightMm = 30 };
+        var model = new ScriptedModel(new AgentReply { Message = "Done", Status = "ready", Label = sized });
+
+        var response = await Agent(model, barcodes).HandleAsync(Say("go"), default);
+
+        Assert.Equal("ready", response.Status);
+        Assert.Equal(["mm", "fit"], barcodes.Requests.Select(r => r.Unit));
+        Assert.Equal(0.25, barcodes.Requests[0].ModuleWidth);     // probe at the minimum bar width
+        Assert.Equal((60, 30), (barcodes.Requests[1].Width, barcodes.Requests[1].Height));
+    }
+
+    [Fact]
+    public async Task Too_small_size_is_reported_with_the_needed_width_and_not_rendered()
+    {
+        var barcodes = new FakeBarcodes { NaturalWidthMm = 113.3 };
+        var sized = CaseLabel with { WidthMm = 60, HeightMm = 30 };
+        var model = new ScriptedModel(
+            new AgentReply { Message = "Done", Status = "ready", Label = sized },
+            new AgentReply { Message = "Das Etikett ist zu klein.", Issues = [new("widthMm", "conflict", "x")] });
+
+        var response = await Agent(model, barcodes).HandleAsync(Say("go"), default);
+
+        Assert.Equal(("needs_info", "Das Etikett ist zu klein."), (response.Status, response.Reply));
+        Assert.Single(barcodes.Requests);                         // only the probe, no label
+        var feedback = model.Calls[1][^1].Text;
+        Assert.Contains("widthMm (conflict)", feedback);
+        Assert.Contains("at least 114 mm", feedback);
+        Assert.Equal((60, 30), (response.Label.WidthMm, response.Label.HeightMm)); // the request is kept for the next turn
+    }
+
+    [Fact]
+    public async Task Two_dimensional_codes_are_compared_on_their_shorter_side()
+    {
+        var barcodes = new FakeBarcodes { NaturalWidthMm = 25 };
+        var qr = CaseLabel with { Symbology = "GS1DigitalLink_QRCode", Batch = null, WidthMm = 60, HeightMm = 20 };
+        var model = new ScriptedModel(
+            new AgentReply { Message = "Done", Status = "ready", Label = qr },
+            new AgentReply { Message = "zu klein", Issues = [new("widthMm", "conflict", "x")] });
+
+        var response = await Agent(model, barcodes).HandleAsync(Say("go"), default);
+
+        Assert.Equal("needs_info", response.Status);              // 25 mm square does not fit into 20 mm height
+    }
+}
+
+public class PngInfoTests
+{
+    [Fact]
+    public void Reads_the_width_from_a_png_header()
+    {
+        var bytes = new byte[33];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0x05, 0xDC }.CopyTo(bytes, 0);
+
+        Assert.Equal(1500, ChatAgent.Api.Barcode.PngInfo.WidthPx(bytes));
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 1, 2 })]
+    [InlineData(new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 })] // a GIF error bitmap
+    public void Non_png_data_yields_null(byte[] bytes) => Assert.Null(ChatAgent.Api.Barcode.PngInfo.WidthPx(bytes));
 }

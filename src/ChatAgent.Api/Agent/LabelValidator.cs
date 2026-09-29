@@ -79,10 +79,22 @@ public static partial class LabelValidator
     /// </summary>
     public static double ModuleWidthMm(string symbology)
     {
-        if (Linear.ContainsKey(symbology) && !symbology.Equals("EAN14", StringComparison.OrdinalIgnoreCase)) return 0.33; // EAN-13/8, UPC-A nominal
-        if (symbology.Contains("QR", StringComparison.OrdinalIgnoreCase) || symbology.Contains("DataMatrix", StringComparison.OrdinalIgnoreCase)) return 0.5; // 2D
+        if (IsRetailLinear(symbology)) return 0.33; // EAN-13/8, UPC-A nominal
+        if (Is2D(symbology)) return 0.5;
         return 0.25; // GS1-128, EAN-14, Code 128/39: GS1 minimum X-dimension, keeps long strings printable
     }
+
+    /// <summary>
+    /// Smallest bar/module width we still consider scannable (approximations of the GS1 minimum X-dimensions:
+    /// 80 % of nominal for EAN/UPC, 0.25 mm for GS1-128 and similar, 0.4 mm for 2D). Used for the size check.
+    /// </summary>
+    public static double MinModuleWidthMm(string symbology) => IsRetailLinear(symbology) ? 0.264 : Is2D(symbology) ? 0.4 : 0.25;
+
+    public static bool Is2D(string symbology) =>
+        symbology.Contains("QR", StringComparison.OrdinalIgnoreCase) || symbology.Contains("DataMatrix", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRetailLinear(string symbology) =>
+        Linear.ContainsKey(symbology) && !symbology.Equals("EAN14", StringComparison.OrdinalIgnoreCase);
 
     private static BarcodeRequest BuildRequest(string symbology, string data, LabelSpec s)
     {

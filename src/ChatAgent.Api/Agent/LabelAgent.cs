@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using ChatAgent.Api.Barcode;
 using ChatAgent.Api.Chat;
@@ -28,40 +29,64 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
             return new(reply.Message, "needs_info", reply.Label, null);
 
         var result = LabelValidator.Validate(reply.Label, today);
-        if (result.Ok) return await RenderAsync(reply, result, ct);
+        var issues = result.Ok ? await SizeIssuesAsync(result.Request!, ct) : result.Issues;
+        if (issues.Count == 0) return await RenderAsync(reply, result, ct);
 
         // Fields only, never values: the log must not contain user input.
-        log.LogWarning("Validation rejected a 'ready' label: {Findings}", string.Join(", ", result.Issues.Select(i => $"{i.Field}:{i.Kind}")));
+        log.LogWarning("Validation rejected a 'ready' label: {Findings}", string.Join(", ", issues.Select(i => $"{i.Field}:{i.Kind}")));
 
         // Keep the label exactly as the user gave it, whatever the second answer contains.
-        var retry = Parse(await CompleteAsync([.. history, new("agent", raw), new("user", FeedbackFor(result.Issues))], ct));
+        var retry = Parse(await CompleteAsync([.. history, new("agent", raw), new("user", FeedbackFor(issues))], ct));
         log.LogInformation("Feedback round: model answered {Status}", retry.Status);
         if (retry.Status == "needs_info")
             return new(retry.Message, "needs_info", reply.Label, null);
 
         log.LogWarning("Model still claimed 'ready' after feedback; showing validator findings instead");
-        var text = "The label cannot be created yet:\n" + string.Join("\n", result.Issues.Select(i => $"• {i.Detail}"));
+        var text = "The label cannot be created yet:\n" + string.Join("\n", issues.Select(i => $"• {i.Detail}"));
         return new(text, "needs_info", reply.Label, null);
     }
 
-    private async Task<ChatResponse> RenderAsync(AgentReply reply, ValidationResult validated, CancellationToken ct)
+    /// <summary>
+    /// With an explicit label size the API scales any data into the box, even to an unscannable size.
+    /// We ask the API itself how wide the symbol is at the smallest acceptable bar width (an estimate from the
+    /// symbol structure was off by up to 40 %) and report a conflict if the requested area is smaller.
+    /// </summary>
+    private async Task<List<AgentIssue>> SizeIssuesAsync(BarcodeRequest request, CancellationToken ct)
     {
-        try
-        {
-            var image = await barcodes.GenerateAsync(validated.Request!, ct);
-            var dataUrl = $"data:{image.ContentType};base64,{Convert.ToBase64String(image.Content)}";
+        if (request is not { Unit: "fit", Width: { } width, Height: { } height }) return [];
 
-            log.LogInformation("Rendered {Symbology} label ({Bytes} bytes)", validated.Request!.Code, image.Content.Length);
+        var minModule = LabelValidator.MinModuleWidthMm(request.Code);
+        var probe = await RenderImageAsync(request with { Unit = "mm", ModuleWidth = minModule, Width = null, Height = null }, ct);
+        if (PngInfo.WidthPx(probe.Content) is not { } px) return [];
 
-            // Be transparent when we derived a value the user did not type.
-            var notices = validated.Label.Gtin != reply.Label.Gtin ? new[] { Notice.GtinCompleted } : [];
-            return new(reply.Message, "ready", validated.Label, dataUrl, Notices: notices);
-        }
+        var naturalMm = px / (double)LabelValidator.Dpi * 25.4;
+        var availableMm = LabelValidator.Is2D(request.Code) ? Math.Min(width, height) : width; // 2D symbols are square
+        if (naturalMm <= availableMm * 1.02) return [];
+
+        var detail = string.Create(CultureInfo.InvariantCulture,
+            $"{request.Code} with this data needs at least {Math.Ceiling(naturalMm)} mm of width (bars of {minModule} mm, the smallest scannable size), but the requested label area is only {availableMm} mm. Use a larger label or less data.");
+        return [new("widthMm", "conflict", detail)];
+    }
+
+    private async Task<BarcodeImage> RenderImageAsync(BarcodeRequest barcode, CancellationToken ct)
+    {
+        try { return await barcodes.GenerateAsync(barcode, ct); }
         catch (BarcodeException ex)
         {
             log.LogWarning("Barcode rendering failed: {Reason}", ex.Message);
             throw new AgentException($"The barcode service could not create the label. {ex.Message}", ex);
         }
+    }
+
+    private async Task<ChatResponse> RenderAsync(AgentReply reply, ValidationResult validated, CancellationToken ct)
+    {
+        var image = await RenderImageAsync(validated.Request!, ct);
+        var dataUrl = $"data:{image.ContentType};base64,{Convert.ToBase64String(image.Content)}";
+        log.LogInformation("Rendered {Symbology} label ({Bytes} bytes)", validated.Request!.Code, image.Content.Length);
+
+        // Be transparent when we derived a value the user did not type.
+        var notices = validated.Label.Gtin != reply.Label.Gtin ? new[] { Notice.GtinCompleted } : [];
+        return new(reply.Message, "ready", validated.Label, dataUrl, Notices: notices);
     }
 
     private async Task<string> CompleteAsync(IReadOnlyList<ChatMessage> history, CancellationToken ct)

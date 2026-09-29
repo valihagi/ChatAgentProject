@@ -14,7 +14,7 @@ public static class ChatModelRegistration
         {
             if (string.IsNullOrEmpty(config["GEMINI_API_KEY"]))
                 throw new InvalidOperationException("Chat:Provider is Gemini but GEMINI_API_KEY is not set.");
-            services.AddHttpClient<IChatModel, GeminiChatModel>();
+            services.AddHttpClient<IChatModel, GeminiChatModel>(c => c.Timeout = TimeSpan.FromSeconds(45));
             return services;
         }
 

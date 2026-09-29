@@ -46,4 +46,13 @@ public class BarcodeClientTests
         var ex = await Assert.ThrowsAsync<BarcodeException>(() => Client(handler).GenerateAsync(Ean, default));
         Assert.DoesNotContain(AccessId, ex.Message);
     }
+
+    [Fact]
+    public async Task Network_failure_and_timeout_become_barcode_exceptions()
+    {
+        await Assert.ThrowsAsync<BarcodeException>(() =>
+            Client(new FakeHandler(_ => throw new HttpRequestException("down"))).GenerateAsync(Ean, default));
+        await Assert.ThrowsAsync<BarcodeException>(() =>
+            Client(new FakeHandler(_ => throw new TaskCanceledException("timeout"))).GenerateAsync(Ean, default));
+    }
 }

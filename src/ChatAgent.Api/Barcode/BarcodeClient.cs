@@ -28,12 +28,24 @@ public class BarcodeClient(HttpClient http, IConfiguration config) : IBarcodeCli
         form["accessid"] = _accessId;
         form["onerror"] = "500";
 
-        using var response = await http.PostAsync(Endpoint, new FormUrlEncodedContent(form), ct);
-        var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-
-        if (!response.IsSuccessStatusCode)
-            throw new BarcodeException($"Barcode API returned {(int)response.StatusCode}.");
+        byte[] bytes;
+        string contentType;
+        try
+        {
+            using var response = await http.PostAsync(Endpoint, new FormUrlEncodedContent(form), ct);
+            if (!response.IsSuccessStatusCode)
+                throw new BarcodeException($"Barcode API returned {(int)response.StatusCode}.");
+            bytes = await response.Content.ReadAsByteArrayAsync(ct);
+            contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+        }
+        catch (HttpRequestException)
+        {
+            throw new BarcodeException("Barcode API is not reachable.");
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested) // HttpClient timeout
+        {
+            throw new BarcodeException("Barcode API did not answer in time.");
+        }
 
         // Observed: despite onerror=500 the API answers 200 with an error *bitmap* (image/gif, text
         // rendered into the image, e.g. "Wrong check digit" or the rate-limit notice). A different

@@ -42,8 +42,9 @@ function tr(tag, className, key, args) {
   return node;
 }
 
-function labelDetails(spec) {
-  const rows = [
+/** The facts shown under the barcode, used by the on-screen card and the downloadable image. */
+function labelFacts(spec) {
+  return [
     ['field.type', spec.packagingLevel && `level.${spec.packagingLevel}`, true],
     ['field.gtin', spec.gtin],
     ['field.sscc', spec.sscc],
@@ -51,10 +52,15 @@ function labelDetails(spec) {
     ['field.bestBefore', spec.bestBefore],
     ['field.items', spec.itemCount],
     ['field.barcode', spec.symbology],
-  ].filter(([, value]) => value);
+  ]
+    .filter(([, value]) => value)
+    .map(([labelKey, value, translated]) => ({ labelKey, valueKey: translated ? value : null, value: String(value) }));
+}
+
+function labelDetails(spec) {
   const list = el('dl', 'details');
-  for (const [labelKey, value, translated] of rows) {
-    list.append(tr('dt', '', labelKey), translated ? tr('dd', '', value) : el('dd', '', String(value)));
+  for (const fact of labelFacts(spec)) {
+    list.append(tr('dt', '', fact.labelKey), fact.valueKey ? tr('dd', '', fact.valueKey) : el('dd', '', fact.value));
   }
   return list;
 }
@@ -77,20 +83,57 @@ function buildLabel(spec, imageUrl, dpi) {
   return card;
 }
 
+function fileBase(spec) {
+  return (spec.productName || 'label')
+    .replace(/ß/g, 'ss')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Qualitätswein -> qualitatswein
+    .replace(/\W+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'label';
+}
+
+function saveAs(url, filename) {
+  const link = el('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+}
+
+/** Downloads the complete label (text + barcode) as one PNG, in the current UI language. */
+async function downloadLabel(data) {
+  const spec = data.label;
+  const lines = [];
+  if (spec.netVolume) lines.push(spec.netVolume);
+  if (spec.alcoholPercent != null) lines.push(t('abv', { abv: spec.alcoholPercent }));
+
+  const blob = await composeLabelPng({
+    title: spec.productName || t('field.label'),
+    lines,
+    facts: labelFacts(spec).map((f) => [t(f.labelKey), f.valueKey ? t(f.valueKey) : f.value]),
+    barcodeUrl: data.image,
+    dpi: data.dpi,
+  });
+  const url = URL.createObjectURL(blob);
+  saveAs(url, `${fileBase(spec)}-label.png`);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 function showLabel(bubbleEl, data) {
   const spec = data.label;
   const card = buildLabel(spec, data.image, data.dpi);
-
-  const download = tr('a', '', 'downloadPng');
-  download.href = data.image;
-  download.download = `${(spec.productName || 'label').replace(/\W+/g, '-').toLowerCase()}-barcode.png`;
 
   const print = tr('button', 'ghost', 'printLabel');
   print.type = 'button';
   print.addEventListener('click', () => printLabel(card));
 
+  const download = tr('button', 'ghost', 'downloadLabel');
+  download.type = 'button';
+  download.addEventListener('click', () => downloadLabel(data).catch(() => bubble('error', t('error.download'))));
+
+  const barcodeOnly = tr('a', '', 'downloadBarcode');
+  barcodeOnly.href = data.image;
+  barcodeOnly.download = `${fileBase(spec)}-barcode.png`;
+
   const actions = el('div', 'actions');
-  actions.append(print, download);
+  actions.append(print, download, barcodeOnly);
   bubbleEl.append(card);
   for (const notice of data.notices || []) {
     bubbleEl.append(tr('p', 'note', `notice.${notice}`, { gtin: spec.gtin }));

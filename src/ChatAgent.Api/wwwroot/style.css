@@ -41,7 +41,7 @@ header {
 .details { display: grid; grid-template-columns: max-content 1fr; gap: .1rem .8rem; margin: 0; font-size: .85rem; }
 .details dt { color: #666; }
 .details dd { margin: 0; }
-.actions { display: flex; align-items: center; gap: 1rem; margin-top: .5rem; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-top: .5rem; }
 .label-note, .note { margin: .5rem 0 0; font-size: .85rem; color: var(--muted); }
 .actions a { font-size: .85rem; color: var(--brand); }
 

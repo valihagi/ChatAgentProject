@@ -79,8 +79,10 @@ Open http://localhost:5080. Use the language selector in the header to switch be
 
 Example inputs (the mock understands only the first one; the others need `Chat__Provider=Gemini`):
 - `0,5 l Apfelsaft naturtrüb, Flasche, GTIN 4006381333931`
+- `Riesling Qualitätswein 0,75 l, 12,5 % vol, Flasche, GTIN 4006381333931`
 - `Karton mit 12 Flaschen Apfelsaft, GTIN 14006381333938, GS1-128, Charge LOT42, MHD 2027-03-31`
 - `Palettenetikett für Cola, EAN13 5449000000996, Charge L17` (contradictory: the agent will ask what is needed)
+- `Apfelsaft 1 l mit 12 % vol` (contradictory: a non-alcoholic product with alcohol content)
 
 ### 5. Run the tests
 ```bash
@@ -121,6 +123,10 @@ Browser (wwwroot) -- POST /api/chat {messages, label} --> LabelAgent
 - The LLM extracts facts, detects gaps and contradictions and asks questions; deterministic code validates and builds the barcode data string, so the model never computes check digits.
 - The server is stateless: the browser sends the conversation plus the last label specification. The model's `label` is applied as a patch onto that state (weaker models sometimes drop known fields); fields are only removed via an explicit `cleared` list.
 - If the LLM says "ready" but validation fails, the findings go back to the LLM once so it can phrase the question in the user's language. That second answer is never rendered, because a value it "fixed" would not have been confirmed by the user.
+- Label content rules (`LabelValidator.CheckContent`, deliberately simplified assumptions, **not legal advice**):
+  - Net volume is required on consumer-unit labels (optional on case and pallet labels), must be a number with `ml`, `cl` or `l`, and is normalized (`0.75L` becomes `0.75 l`). Numerals such as `1.000 ml` are rejected as ambiguous instead of guessed.
+  - Alcohol content (`alcoholPercent`, % vol) has at most one decimal place and lies between 0 and 100. The model sets `alcoholic` (beer, wine, spirits: true; juice, water: false). Alcoholic products must state the value (the EU requires it above 1.2 % vol), and a non-alcoholic product with more than 1.2 % vol is reported as a contradiction.
+  - Both are printed on the label card, with the decimal separator of the UI language.
 - The system prompt is in `src/ChatAgent.Api/Prompts/system-prompt.md`; the supported barcode types are in `Barcode/BarcodeTypes.cs`.
 
 ## Logging
@@ -141,9 +147,18 @@ Standard ASP.NET Core console logging. The app logs turn outcomes (status, issue
 - Lesson: with a `responseSchema`, keys that are not `required` are silently omitted by the model (a first turn returned only the product name although GTIN, date and count had been given). All label keys are therefore required (nullable) and carry short descriptions.
 - Not verified live: the `cleared` list (unit-tested only) and the sentence added afterwards to stop the model from asking for confirmation of unambiguous relative dates. `gemini-3.6-flash` and `gemini-3.8-flash` answered 503 (overloaded) whenever tried.
 
+## Open points (label content not covered yet)
+The task asks for "konforme" labels and provides no rule packs, so the scope was decided explicitly: **barcode correctness plus net volume and alcohol content**. Still open:
+- Allergen declaration (e.g. sulphites in wine) and ingredient list / nutrition table for soft drinks
+- Producer or bottler name and address
+- Deposit mark (Pfand) and recycling symbols
+- Country of origin, lot/date marking rules per market, and legally prescribed pack sizes
+- Market-specific variants (EU vs. US/UPC-A) beyond choosing the barcode type
+- Layout and typography rules (minimum font sizes, e-mark) and a fixed label template with several barcodes
+
 ## Known limitations
 - Output is a 300 DPI PNG (limit of the access id, no SVG/vector), so very large print sizes are not crisp.
-- "Print-ready" covers the barcode and its data. The label text is limited to product name, volume and key facts; regulatory label content (alcohol content, allergens, producer address, deposit mark) is not modelled.
+- "Print-ready" covers the barcode with its data, the product name, net volume and alcohol content (see the rules above). Further regulatory label content is **not modelled** (open points below).
 - One label per conversation state; several labels (bottle, case, pallet) need separate chats.
 - GS1 Digital Link codes point to GS1's generic resolver (`id.gs1.org`), which only resolves GTINs registered there.
 - Barcodes were not verified with a scanner; a symbol that is scaled into a very small box is not warned about.

@@ -32,10 +32,25 @@ header {
 .msg.pending { color: var(--muted); animation: pulse 1s infinite; }
 @keyframes pulse { 50% { opacity: .4; } }
 
-/* Barcodes must stay on white with dark bars, also in dark mode. */
-.label-card { margin: .7rem 0 0; padding: .8rem; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
-.label-card img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
-.label-card a { display: block; margin-top: .5rem; text-align: center; font-size: .85rem; color: var(--brand); }
+/* Labels are always black on white (also in dark mode) so barcodes stay scannable. */
+.label { margin-top: .7rem; padding: 1rem; background: #fff; color: #111; border: 1px solid var(--border); border-radius: 10px; }
+.label h3 { margin: 0; font-size: 1.15rem; }
+.label .volume { margin: .1rem 0 .6rem; color: #444; }
+.label img { display: block; max-width: 100%; height: auto; margin: .6rem 0; }
+.details { display: grid; grid-template-columns: max-content 1fr; gap: .1rem .8rem; margin: 0; font-size: .85rem; }
+.details dt { color: #666; }
+.details dd { margin: 0; }
+.actions { display: flex; align-items: center; gap: 1rem; margin-top: .5rem; }
+.actions a { font-size: .85rem; color: var(--brand); }
+
+#print-area { display: none; }
+@media print {
+  @page { margin: 10mm; }
+  .chat { display: none; }
+  #print-area { display: block; }
+  #print-area .label { border: 1px solid #000; border-radius: 0; break-inside: avoid; display: inline-block; }
+  #print-area .label img { max-width: none; }
+}
 
 .composer { display: flex; gap: .5rem; padding: .8rem 1rem; border-top: 1px solid var(--border); }
 .composer input {

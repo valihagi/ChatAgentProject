@@ -25,22 +25,67 @@ function scrollDown() {
   history.scrollTop = history.scrollHeight;
 }
 
-function showLabel(bubbleEl, imageUrl, name) {
-  const card = document.createElement('figure');
-  card.className = 'label-card';
+const LEVELS = { consumer_unit: 'Consumer unit', case: 'Case', pallet: 'Pallet' };
+const DPI = 300; // must match LabelValidator.Dpi
 
-  const img = document.createElement('img');
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text) node.textContent = text;
+  return node;
+}
+
+function labelDetails(spec) {
+  const rows = [
+    ['Type', LEVELS[spec.packagingLevel] || spec.packagingLevel],
+    ['Batch', spec.batch],
+    ['Best before', spec.bestBefore],
+    ['Items', spec.itemCount],
+    ['Barcode', spec.symbology],
+  ].filter(([, value]) => value);
+  const list = el('dl', 'details');
+  for (const [name, value] of rows) list.append(el('dt', '', name), el('dd', '', String(value)));
+  return list;
+}
+
+/** The printable label: product text, barcode at its physical size, key facts. */
+function buildLabel(spec, imageUrl) {
+  const card = el('div', 'label');
+  card.append(el('h3', '', spec.productName || 'Label'));
+  if (spec.netVolume) card.append(el('p', 'volume', spec.netVolume));
+
+  const img = el('img');
+  img.alt = `Barcode ${spec.symbology || ''}`;
+  img.addEventListener('load', () => {
+    img.style.width = `${(img.naturalWidth / DPI) * 25.4}mm`; // true size when printed
+  });
   img.src = imageUrl;
-  img.alt = `Generated barcode for ${name || 'label'}`;
+  card.append(img, labelDetails(spec));
+  return card;
+}
 
-  const link = document.createElement('a');
-  link.href = imageUrl;
-  link.download = `${(name || 'label').replace(/\W+/g, '-').toLowerCase()}.png`;
-  link.textContent = 'Download PNG';
+function showLabel(bubbleEl, imageUrl, spec) {
+  const card = buildLabel(spec, imageUrl);
 
-  card.append(img, link);
-  bubbleEl.appendChild(card);
+  const download = el('a', '', 'Download PNG');
+  download.href = imageUrl;
+  download.download = `${(spec.productName || 'label').replace(/\W+/g, '-').toLowerCase()}-barcode.png`;
+
+  const print = el('button', 'ghost', 'Print label');
+  print.type = 'button';
+  print.addEventListener('click', () => printLabel(card));
+
+  const actions = el('div', 'actions');
+  actions.append(print, download);
+  bubbleEl.append(card, actions);
   scrollDown();
+}
+
+function printLabel(card) {
+  const area = document.getElementById('print-area');
+  area.replaceChildren(card.cloneNode(true));
+  window.print();
+  area.replaceChildren();
 }
 
 function start() {
@@ -75,7 +120,7 @@ form.addEventListener('submit', async (e) => {
     label = data.label;
     pending.className = 'msg agent';
     pending.textContent = data.reply;
-    if (data.image) showLabel(pending, data.image, data.label?.productName);
+    if (data.image) showLabel(pending, data.image, data.label);
   } catch (err) {
     messages.pop(); // let the user resend
     pending.className = 'msg error';

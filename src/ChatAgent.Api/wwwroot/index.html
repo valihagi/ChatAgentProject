@@ -8,11 +8,14 @@
 </head>
 <body>
   <main class="chat">
-    <header>Label Chat Agent</header>
+    <header>
+      <span class="title">Label Chat Agent <small>beverage labels</small></span>
+      <button id="reset" type="button" class="ghost">New chat</button>
+    </header>
     <div id="history" class="history" aria-live="polite"></div>
     <form id="form" class="composer">
       <input id="input" type="text" placeholder="Describe your product…" autocomplete="off" autofocus>
-      <button type="submit">Send</button>
+      <button id="send" type="submit">Send</button>
     </form>
   </main>
   <script src="app.js"></script>

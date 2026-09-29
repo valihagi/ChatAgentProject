@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ChatAgent.Api.Agent;
 using ChatAgent.Api.Barcode;
 
 namespace ChatAgent.Api.Chat;
@@ -16,7 +17,7 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
     private readonly string _promptTemplate = File.ReadAllText(
         Path.Combine(AppContext.BaseDirectory, "Prompts", "system-prompt.md"));
 
-    private const int MaxRetries = 2;
+    private const int MaxRetries = 1; // free tier allows ~20 requests/day/model; every attempt may count
 
     /// <summary>Base delay between retries; tests set it to zero.</summary>
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(2);
@@ -43,7 +44,7 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
             })
         };
 
-        // Free-tier Gemini is often overloaded (503): retry briefly. A 429 is a quota limit that a
+        // Free-tier Gemini is often overloaded (503): retry once. A 429 is a quota limit that a
         // few seconds will not clear, and every retry would count against it, so it fails immediately.
         for (var attempt = 0; ; attempt++)
         {
@@ -103,6 +104,7 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
             }
           }
         },
+        "cleared": { "type": "ARRAY", "items": { "type": "STRING", "enum": {{JsonSerializer.Serialize(LabelSpec.FieldNames)}} } },
         "label": {
           "type": "OBJECT",
           "properties": {

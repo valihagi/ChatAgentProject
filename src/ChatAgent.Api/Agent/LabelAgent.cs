@@ -21,6 +21,7 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
 
         var raw = await CompleteAsync(history, ct);
         var reply = Parse(raw);
+        reply = reply with { Label = LabelSpec.Merge(request.Label, reply.Label, reply.Cleared) };
 
         if (reply.Status != "ready" || reply.Issues.Count > 0)
             return new(reply.Message, "needs_info", reply.Label, null);
@@ -73,6 +74,7 @@ public class LabelAgent(IChatModel model, IBarcodeClient barcodes, TimeProvider 
             {
                 Status = (reply.Status ?? "").Trim().ToLowerInvariant(),
                 Issues = reply.Issues ?? [],
+                Cleared = reply.Cleared ?? [],
                 Label = (reply.Label ?? new()).Normalized(),
             };
         }

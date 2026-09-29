@@ -32,20 +32,20 @@ public class GeminiChatModelTests
     }
 
     [Fact]
-    public async Task Retries_on_503_and_gives_up_with_the_api_message()
+    public async Task Retries_once_on_503_and_then_gives_up_with_the_api_message()
     {
         var calls = 0;
         var handler = new FakeHandler(_ =>
         {
             calls++;
-            return calls < 3
+            return calls < 2
                 ? Json(HttpStatusCode.ServiceUnavailable, """{"error":{"message":"busy"}}""")
                 : Json(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}""");
         });
         var model = Model(handler);
 
         Assert.Equal("ok", await model.CompleteAsync([new("user", "x")], default));
-        Assert.Equal(3, calls);
+        Assert.Equal(2, calls);
 
         var always503 = Model(new FakeHandler(_ => Json(HttpStatusCode.ServiceUnavailable, """{"error":{"message":"busy"}}""")));
         var ex = await Assert.ThrowsAsync<HttpRequestException>(() => always503.CompleteAsync([new("user", "x")], default));

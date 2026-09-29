@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using ChatAgent.Api.Barcode;
 
 namespace ChatAgent.Api.Agent;
@@ -18,6 +20,25 @@ public record LabelSpec
     public string? Url { get; init; }
     public double? WidthMm { get; init; }
     public double? HeightMm { get; init; }
+
+    /// <summary>JSON names of all fields (camelCase), e.g. for the <c>cleared</c> list.</summary>
+    public static readonly string[] FieldNames =
+        typeof(LabelSpec).GetProperties().Select(p => JsonNamingPolicy.CamelCase.ConvertName(p.Name)).ToArray();
+
+    /// <summary>
+    /// Applies the LLM's answer as a patch onto the previous state: non-null values override, null means
+    /// "unchanged" (models sometimes drop known fields), and only names listed in <paramref name="cleared"/> are removed.
+    /// </summary>
+    public static LabelSpec Merge(LabelSpec? previous, LabelSpec update, IEnumerable<string> cleared)
+    {
+        var merged = JsonSerializer.SerializeToNode(previous ?? new(), JsonSerializerOptions.Web)!.AsObject();
+        foreach (var (key, value) in JsonSerializer.SerializeToNode(update, JsonSerializerOptions.Web)!.AsObject())
+            if (value is not null) merged[key] = value.DeepClone();
+        foreach (var name in cleared)
+            if (FieldNames.FirstOrDefault(f => f.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } field)
+                merged[field] = null;
+        return merged.Deserialize<LabelSpec>(JsonSerializerOptions.Web)!.Normalized();
+    }
 
     /// <summary>Cleans up LLM output: trims, empty strings become null, canonical casing, no spaces in numbers.</summary>
     public LabelSpec Normalized() => this with
@@ -51,4 +72,6 @@ public record AgentReply
     public string Status { get; init; } = "needs_info";
     public List<AgentIssue> Issues { get; init; } = [];
     public LabelSpec Label { get; init; } = new();
+    /// <summary>Names of fields the user withdrew; null in <see cref="Label"/> alone never deletes anything.</summary>
+    public List<string> Cleared { get; init; } = [];
 }

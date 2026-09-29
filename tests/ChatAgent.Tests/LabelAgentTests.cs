@@ -149,6 +149,33 @@ public class LabelAgentTests
     }
 
     [Fact]
+    public async Task Fields_the_model_forgot_are_kept_from_the_previous_state()
+    {
+        // The model answers with only the product name, as weaker models sometimes do.
+        var model = new ScriptedModel(new AgentReply
+        {
+            Message = "Bitte Datum bestätigen", Issues = [new("bestBefore", "conflict", "x")], Label = new() { ProductName = "Apfelsaft" },
+        });
+
+        var response = await Agent(model, new FakeBarcodes()).HandleAsync(Say("Datum?", GoodLabel), default);
+
+        Assert.Equal("needs_info", response.Status);
+        Assert.Equal(("EAN13", "4006381333931"), (response.Label.Symbology, response.Label.Gtin));
+    }
+
+    [Fact]
+    public async Task Cleared_fields_are_removed_from_the_state()
+    {
+        var model = new ScriptedModel(new AgentReply { Message = "Batch entfernt", Cleared = ["batch"] });
+
+        var response = await Agent(model, new FakeBarcodes())
+            .HandleAsync(Say("ohne Charge", GoodLabel with { Batch = "L1" }), default);
+
+        Assert.Null(response.Label.Batch);
+        Assert.Equal("Apfelsaft", response.Label.ProductName);
+    }
+
+    [Fact]
     public async Task Json_with_null_label_and_issues_does_not_crash()
     {
         var response = await Agent(new RawModel("""{"message":"hi","status":"needs_info","issues":null,"label":null}"""),

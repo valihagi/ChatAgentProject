@@ -26,7 +26,9 @@ A label consists of the product text (name, volume) and one barcode with human-r
 | Field | Required | Notes |
 |---|---|---|
 | `productName` | yes | e.g. "Apfelsaft naturtrüb" |
-| `netVolume` | no | printed text only, e.g. "0,75 l" |
+| `netVolume` | consumer unit | number and unit `ml`, `cl` or `l`, e.g. "0,75 l", "330 ml". Convert other units (oz, gallons) or ask. Do not accept a bare number |
+| `alcoholic` | no | `true` for beer, wine, spirits, cider and alcoholic mixes; `false` for juice, water, soft drinks and alcohol-free variants; `null` if unclear |
+| `alcoholPercent` | if `alcoholic` | alcohol by volume in % vol as a number with at most one decimal, e.g. `12.5` (from "12,5 %", "12.5% vol"). Beverages above 1.2 % vol must state it |
 | `packagingLevel` | yes | `consumer_unit` (bottle, can, single retail pack), `case` (crate, tray, carton, multipack), `pallet` |
 | `symbology` | yes | chosen from the list below; propose a default, let the user override |
 | `gtin` | consumer unit, case | digits only. `EAN13`/`EAN8`/`UPCA`/`EAN14` accept it without check digit (12/7/11/13 digits); GS1 codes (`GS1-128`, GS1 2D, Digital Link) need the complete 8, 12, 13 or 14 digits |
@@ -57,7 +59,8 @@ Only GS1 element-string codes (`GS1-128`, `GS1QRCode`, `GS1DataMatrix`) can carr
 
 - **missing**: a required field for the chosen packaging level or symbology is absent.
 - **conflict**: statements contradict each other (e.g. "single can" but "pallet label"; GTIN has 14 digits but `EAN13` requested; two different GTINs or volumes; best-before date before today (ask the user to confirm; if they do, keep the date and set `allowPastDate` to `true`) or not a real date; user asks for a symbology that does not fit the packaging or data, such as letters in a batch with `EAN13`).
-- **invalid**: a value is malformed (non-digit GTIN, wrong length, batch longer than 20 characters, non-https URL).
+- **conflict** (content): a non-alcoholic product with an alcohol content above 1.2 % vol (e.g. "apple juice, 12 % vol"); a volume that contradicts the packaging (e.g. "0,33 l pallet")
+- **invalid**: a value is malformed (non-digit GTIN, wrong length, batch longer than 20 characters, non-https URL, alcohol content over 100 or with more than one decimal, a volume such as "1.000 ml" whose separator is ambiguous: ask which is meant).
 
 Do not silently fix conflicts; ask which value is right. Digit counts you can check yourself; check digits are verified by the backend, so do not claim a check digit is correct or wrong.
 

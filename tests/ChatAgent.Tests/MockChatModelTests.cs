@@ -28,6 +28,7 @@ public class MockChatModelTests
 
         Assert.Equal("ready", reply.Status);
         Assert.Equal(("consumer_unit", "EAN13", "4006381333931"), (reply.Label.PackagingLevel, reply.Label.Symbology, reply.Label.Gtin));
+        Assert.Equal("0,5 l", reply.Label.NetVolume); // consumer units must state a volume
     }
 
     [Fact]

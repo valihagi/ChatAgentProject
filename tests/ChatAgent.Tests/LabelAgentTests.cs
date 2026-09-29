@@ -37,7 +37,7 @@ public class LabelAgentTests
 
     private static readonly LabelSpec GoodLabel = new()
     {
-        ProductName = "Apfelsaft", PackagingLevel = "consumer_unit", Symbology = "EAN13", Gtin = "4006381333931",
+        ProductName = "Apfelsaft", NetVolume = "0,75 l", PackagingLevel = "consumer_unit", Symbology = "EAN13", Gtin = "4006381333931",
     };
 
     private static LabelAgent Agent(IChatModel model, IBarcodeClient barcodes, ILogger<LabelAgent>? log = null) =>
@@ -171,7 +171,7 @@ public class LabelAgentTests
     {
         var messy = new LabelSpec
         {
-            ProductName = " Apfelsaft ", PackagingLevel = "Consumer-Unit", Symbology = "ean13",
+            ProductName = " Apfelsaft ", NetVolume = " 0.75L ", PackagingLevel = "Consumer-Unit", Symbology = "ean13",
             Gtin = "4006 3813 33931", Batch = "", Sscc = "  ",
         };
         var model = new ScriptedModel(new AgentReply { Message = "Done", Status = " Ready ", Label = messy });

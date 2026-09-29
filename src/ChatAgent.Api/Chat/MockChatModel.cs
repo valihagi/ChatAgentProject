@@ -33,6 +33,7 @@ public partial class MockChatModel : IChatModel
                 Label = new()
                 {
                     ProductName = "Mock product",
+                    NetVolume = "0,5 l",
                     PackagingLevel = isCase ? "case" : "consumer_unit",
                     Symbology = isCase ? "EAN14" : "EAN13",
                     Gtin = match.Value,

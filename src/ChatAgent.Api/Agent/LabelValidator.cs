@@ -16,6 +16,7 @@ public record ValidationResult(List<AgentIssue> Issues, BarcodeRequest? Request,
 public static partial class LabelValidator
 {
     public const int Dpi = 300; // maximum for non-subscribers
+    public const double AlcoholStatementThreshold = 1.2; // % vol; above this the statement is mandatory
 
     private static readonly string[] Levels = ["consumer_unit", "case", "pallet"];
 
@@ -59,6 +60,7 @@ public static partial class LabelValidator
         var findings = new Findings();
 
         CheckRequiredFields(s, findings);
+        CheckContent(s, findings);
         var yymmdd = CheckBestBefore(s, today, findings);
         CheckOptionalFields(s, findings);
         var symbology = ResolveSymbology(s, findings);
@@ -100,6 +102,32 @@ public static partial class LabelValidator
         else if (!Levels.Contains(s.PackagingLevel)) f.Add("packagingLevel", "invalid", $"Unknown packaging level '{s.PackagingLevel}'.");
 
         if (s.PackagingLevel == "pallet" && s.Sscc is null) f.Add("sscc", "missing", "Pallet labels need an SSCC (18 digits).");
+    }
+
+    /// <summary>
+    /// Simplified label-content rules (assumptions, not legal advice): a consumer unit states its net volume;
+    /// beverages above 1.2 % vol state their alcohol content, with at most one decimal (EU 1169/2011, annex XII).
+    /// </summary>
+    private static void CheckContent(LabelSpec s, Findings f)
+    {
+        if (s.NetVolume is null)
+        {
+            if (s.PackagingLevel == "consumer_unit") f.Add("netVolume", "missing", "Consumer units must state their net volume (e.g. 0,75 l).");
+        }
+        else if (!NetVolume.TryParse(s.NetVolume, out _, out _, out var volumeError))
+            f.Add("netVolume", "invalid", volumeError!);
+
+        if (s.AlcoholPercent is { } abv)
+        {
+            if (abv is < 0 or > 100)
+                f.Add("alcoholPercent", "invalid", $"Alcohol content {abv} % vol is not possible (0 to 100).");
+            else if (Math.Abs(abv * 10 - Math.Round(abv * 10)) > 1e-9)
+                f.Add("alcoholPercent", "invalid", $"Alcohol content is stated with at most one decimal place, got {abv}.");
+            else if (abv > AlcoholStatementThreshold && s.Alcoholic == false)
+                f.Add("alcoholPercent", "conflict", $"The product is not alcoholic but has {abv} % vol.");
+        }
+        if (s.Alcoholic == true && s.AlcoholPercent is null)
+            f.Add("alcoholPercent", "missing", "Alcoholic beverages must state their alcohol content in % vol.");
     }
 
     /// <summary>Returns the date as GS1 YYMMDD, or null if absent or rejected.</summary>

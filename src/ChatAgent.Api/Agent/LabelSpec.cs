@@ -8,7 +8,9 @@ namespace ChatAgent.Api.Agent;
 public record LabelSpec
 {
     public string? ProductName { get; init; }
-    public string? NetVolume { get; init; }
+    public string? NetVolume { get; init; }        // printed text, e.g. "0,75 l"
+    public bool? Alcoholic { get; init; }          // beer, wine, spirits...: true; juice, water, soft drink: false
+    public double? AlcoholPercent { get; init; }   // % vol
     public string? PackagingLevel { get; init; }   // consumer_unit | case | pallet
     public string? Symbology { get; init; }
     public string? Gtin { get; init; }
@@ -44,7 +46,7 @@ public record LabelSpec
     public LabelSpec Normalized() => this with
     {
         ProductName = Clean(ProductName),
-        NetVolume = Clean(NetVolume),
+        NetVolume = Clean(NetVolume) is { } volume ? Agent.NetVolume.Normalize(volume) : null,
         PackagingLevel = Clean(PackagingLevel)?.ToLowerInvariant().Replace('-', '_').Replace(' ', '_'),
         Symbology = Clean(Symbology) is { } sym && BarcodeTypes.Allowed.TryGetValue(sym, out var canonical) ? canonical : Clean(Symbology),
         Gtin = Number(Gtin),

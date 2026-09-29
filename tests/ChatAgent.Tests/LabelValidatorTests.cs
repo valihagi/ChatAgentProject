@@ -12,7 +12,7 @@ public class LabelValidatorTests
     {
         var spec = new LabelSpec
         {
-            ProductName = "Apfelsaft", PackagingLevel = "consumer_unit", Symbology = "EAN13", Gtin = Gtin13,
+            ProductName = "Apfelsaft", NetVolume = "0,75 l", PackagingLevel = "consumer_unit", Symbology = "EAN13", Gtin = Gtin13,
         };
         return change?.Invoke(spec) ?? spec;
     }
@@ -331,4 +331,83 @@ public class LabelValidatorTests
         AssertIssue(Check(caseLabel), "itemCount", "conflict");
         AssertIssue(Check(Bottle(s => s with { Sscc = Sscc() })), "sscc", "conflict");
     }
+
+    // ---- net volume ----
+
+    [Fact]
+    public void Consumer_unit_needs_a_net_volume_but_case_and_pallet_do_not()
+    {
+        AssertIssue(Check(Bottle(s => s with { NetVolume = null })), "netVolume", "missing");
+
+        var caseLabel = Bottle(s => s with { NetVolume = null, PackagingLevel = "case", Symbology = "GS1-128", Gtin = Gtin14 });
+        Assert.True(Check(caseLabel).Ok);
+    }
+
+    [Theory]
+    [InlineData("0,75 l")]
+    [InlineData("0.75 l")]
+    [InlineData("75 cl")]
+    [InlineData("330 ml")]
+    [InlineData("1 l")]
+    [InlineData("1,5 l")]
+    public void Valid_net_volumes_are_accepted(string volume) =>
+        Assert.True(Check(Bottle(s => s with { NetVolume = volume })).Ok);
+
+    [Theory]
+    [InlineData("0,75")]          // no unit
+    [InlineData("16 oz")]         // unit we do not support
+    [InlineData("big bottle")]
+    [InlineData("0 l")]
+    [InlineData("500 l")]         // not plausible
+    public void Invalid_net_volumes_are_reported(string volume) =>
+        AssertIssue(Check(Bottle(s => s with { NetVolume = volume })), "netVolume", "invalid");
+
+    [Fact]
+    public void Ambiguous_thousands_separator_is_not_guessed()
+    {
+        var r = Check(Bottle(s => s with { NetVolume = "1.000 ml" }));
+
+        AssertIssue(r, "netVolume", "invalid");
+        Assert.Contains("ambiguous", r.Issues.Single().Detail);
+    }
+
+    // ---- alcohol content ----
+
+    private static LabelSpec Wine(Func<LabelSpec, LabelSpec>? change = null) => Bottle(s =>
+    {
+        var wine = s with { Alcoholic = true, AlcoholPercent = 12.5 };
+        return change?.Invoke(wine) ?? wine;   // the test's own values win over the defaults
+    });
+
+    [Theory]
+    [InlineData(12.5)]
+    [InlineData(5.0)]
+    [InlineData(40)]
+    [InlineData(0.5)]
+    public void Alcohol_content_with_at_most_one_decimal_is_accepted(double abv) =>
+        Assert.True(Check(Wine(s => s with { AlcoholPercent = abv })).Ok);
+
+    [Theory]
+    [InlineData(12.55)]   // more than one decimal
+    [InlineData(-1)]
+    [InlineData(101)]
+    public void Impossible_or_over_precise_alcohol_content_is_invalid(double abv) =>
+        AssertIssue(Check(Wine(s => s with { AlcoholPercent = abv })), "alcoholPercent", "invalid");
+
+    [Fact]
+    public void Alcoholic_product_must_state_its_alcohol_content() =>
+        AssertIssue(Check(Bottle(s => s with { Alcoholic = true })), "alcoholPercent", "missing");
+
+    [Fact]
+    public void Non_alcoholic_product_with_alcohol_above_the_threshold_is_a_conflict()
+    {
+        var juice = Bottle(s => s with { Alcoholic = false, AlcoholPercent = 12 });
+
+        AssertIssue(Check(juice), "alcoholPercent", "conflict");
+        Assert.True(Check(juice with { AlcoholPercent = 0.5 }).Ok); // alcohol-free beer style values are fine
+    }
+
+    [Fact]
+    public void Non_alcoholic_products_need_no_alcohol_statement() =>
+        Assert.True(Check(Bottle(s => s with { Alcoholic = false })).Ok);
 }

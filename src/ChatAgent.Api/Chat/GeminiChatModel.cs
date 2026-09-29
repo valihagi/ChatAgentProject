@@ -115,7 +115,9 @@ public class GeminiChatModel(HttpClient http, IConfiguration config, TimeProvide
           "required": {{JsonSerializer.Serialize(LabelSpec.FieldNames)}},
           "properties": {
             "productName": { "type": "STRING", "nullable": true, "description": "Product name as given by the user" },
-            "netVolume": { "type": "STRING", "nullable": true, "description": "Printed volume text, e.g. 0,75 l" },
+            "netVolume": { "type": "STRING", "nullable": true, "description": "Net volume with unit ml, cl or l, e.g. 0,75 l. Required on consumer units" },
+            "alcoholic": { "type": "BOOLEAN", "nullable": true, "description": "true for beer, wine, spirits, cider, alcoholic mixes; false for juice, water, soft drinks and alcohol-free variants; null if unclear" },
+            "alcoholPercent": { "type": "NUMBER", "nullable": true, "description": "Alcohol by volume in % vol as a number, e.g. 12.5" },
             "packagingLevel": { "type": "STRING", "nullable": true, "enum": ["consumer_unit", "case", "pallet"], "description": "bottle/can = consumer_unit, carton/crate/tray = case" },
             "symbology": { "type": "STRING", "nullable": true, "enum": {{JsonSerializer.Serialize(BarcodeTypes.Allowed.Order())}}, "description": "Barcode type the user named, else the default for the packaging level" },
             "gtin": { "type": "STRING", "nullable": true, "description": "Digits of the GTIN/EAN the user gave; fill it whenever a number is present, even if a question is open" },
